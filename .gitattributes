@@ -1,0 +1,5 @@
+# Normalize line endings so Windows edits and Linux Actions runs agree
+* text=auto eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
