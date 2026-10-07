@@ -53,6 +53,22 @@ def test_parse_marine_unknown_unit_raises():
         openmeteo.parse_marine(loc, 1)
 
 
+def test_parse_marine_unavailable_variable_is_all_null():
+    # Live response: the default model has no tertiary swell and reports unit 'undefined'.
+    loc = marine_location()
+    loc["hourly_units"]["tertiary_swell_wave_height"] = "undefined"
+    loc["hourly"]["tertiary_swell_wave_height"] = [None] * 48
+    out = openmeteo.parse_marine(loc, 1)[0]
+    assert out["tertiary_swell_wave_height"] == [None] * 48
+
+
+def test_parse_marine_undefined_unit_with_values_raises():
+    loc = marine_location()
+    loc["hourly_units"]["tertiary_swell_wave_height"] = "undefined"
+    with pytest.raises(FetchError, match="unrecognised unit"):
+        openmeteo.parse_marine(loc, 1)
+
+
 def test_open_meteo_error_payload_raises():
     with pytest.raises(FetchError, match="bad lat"):
         openmeteo.parse_marine({"error": True, "reason": "bad lat"}, 1)

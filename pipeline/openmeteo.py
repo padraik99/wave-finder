@@ -83,6 +83,10 @@ def _normalise_block(block: dict, units: dict, variables) -> dict:
         if var == "weather_code":
             out[var] = block[var]
             continue
+        if unit in ("", "undefined") and all(v is None for v in block[var]):
+            # The model doesn't provide this variable (e.g. tertiary swell): all nulls.
+            out[var] = list(block[var])
+            continue
         try:
             conv = normaliser(unit)
         except ValueError as exc:
