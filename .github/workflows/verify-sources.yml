@@ -1,0 +1,53 @@
+# Live check of every station ID and API, plus a full end-to-end pipeline run
+# into a throwaway folder (uploaded as an artifact, never published).
+# Runs when spots or pipeline code change, and weekly to catch dead buoys.
+name: Verify sources
+
+on:
+  push:
+    branches-ignore: [data]
+    paths:
+      - spots.json
+      - "pipeline/**"
+      - .github/workflows/verify-sources.yml
+  schedule:
+    - cron: "23 15 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Verify stations and APIs
+        run: python -m pipeline.verify
+      - name: End-to-end pipeline run
+        if: always()
+        run: |
+          python -m pipeline.run --out e2e
+          python -m pipeline.staleness --meta e2e/meta.json --no-notify
+          du -sh e2e e2e/*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-data
+          path: e2e
+          retention-days: 7
+      - name: Alert on failure (weekly run only)
+        if: failure() && github.event_name == 'schedule'
+        run: >
+          python -m pipeline.ntfy --priority default --tags buoy
+          --title "Wave Finder: a data source needs attention"
+          --message "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

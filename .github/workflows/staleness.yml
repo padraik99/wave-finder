@@ -1,0 +1,30 @@
+# Independent check that published data is still fresh; pings ntfy if not.
+name: Staleness check
+
+on:
+  schedule:
+    - cron: "47 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Read meta.json from data branch
+        run: |
+          git fetch --depth=1 origin data && git show FETCH_HEAD:meta.json > meta.json || true
+      - name: Check freshness
+        env:
+          NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+        run: python -m pipeline.staleness --meta meta.json
