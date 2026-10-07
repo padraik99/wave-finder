@@ -174,3 +174,30 @@ def test_buoy_fetch_tolerates_missing_spec():
 def test_parse_table_rejects_html():
     with pytest.raises(ValueError):
         buoys.parse_table("<html>maintenance</html>")
+
+
+def test_tide_fetch_retries_coops_in_band_errors(monkeypatch):
+    from .conftest import COOPS_HILO, FakeResponse
+
+    in_band_error = {"error": {"message": "No Predictions data was found."}}
+
+    class Flaky:
+        def __init__(self, failures):
+            self.failures, self.calls = failures, 0
+
+        def get(self, url, params=None, timeout=None):
+            self.calls += 1
+            if self.calls <= self.failures:
+                return FakeResponse(200, body=in_band_error)
+            return FakeResponse(200, body=COOPS_HILO)
+
+    monkeypatch.setattr(tides, "RETRY_DELAYS_S", (2, 5))
+    slept = []
+    s = Flaky(failures=2)
+    data = tides.fetch(s, "9414958", date(2026, 10, 7), 2, sleep=slept.append)
+    assert data["extremes"] and s.calls == 3 and slept == [2, 5]
+
+    s = Flaky(failures=3)
+    with pytest.raises(FetchError):
+        tides.fetch(s, "9414958", date(2026, 10, 7), 2, sleep=lambda _: None)
+    assert s.calls == 3
