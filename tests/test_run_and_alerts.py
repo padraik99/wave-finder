@@ -37,7 +37,7 @@ def test_full_run_writes_all_outputs(tmp_path, healthy_session):
     # Forecast at the buoy's own location, to compare like for like.
     bf = buoy["forecast"]
     assert bf["time"] and bf["time"][-1] <= NOW + 48 * 3600
-    assert bf["wave_height"][0] == 4.9 and bf["wave_peak_period"][0] == 14.0
+    assert bf["wave_height"][0] == 4.9 and bf["wave_period"][0] == 14.0
     marine_call = next(c for c in healthy_session.calls if "marine-api" in c[0])
     n_points = len(marine_call[1]["latitude"].split(","))
     assert n_points == len(doc["spots"]) + len(spots.used_buoys(doc))
