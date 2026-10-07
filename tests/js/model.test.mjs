@@ -73,6 +73,23 @@ test('buoyVsForecast compares the reading with the matching forecast hour', () =
   assert.equal(r.delta, 0.6);
   assert.equal(buoyVsForecast({ latest: { time: 99999, wave_height_ft: 5 } }, fc).forecast, null);
   assert.equal(buoyVsForecast({ latest: null }, fc), null);
+  assert.equal(r.where, 'spot');
+  assert.equal(r.forecast.periodKind, 'mean');
+});
+
+test('buoyVsForecast prefers the forecast made at the buoy itself', () => {
+  const buoy = {
+    latest: { time: 3600, wave_height_ft: 5.0 },
+    forecast: {
+      time: [0, 3600], wave_height: [4.0, 4.8], wave_peak_period: [13, 14], wave_period: [9, 9],
+      wave_direction: [290, 290], sea_surface_temperature: [57, 57],
+    },
+  };
+  const r = buoyVsForecast(buoy, fc);
+  assert.equal(r.where, 'buoy');
+  assert.equal(r.delta, 0.2);
+  assert.equal(r.forecast.period, 14);
+  assert.equal(r.forecast.periodKind, 'peak');
 });
 
 test('fmtAge', () => {

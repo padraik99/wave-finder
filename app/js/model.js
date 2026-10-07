@@ -90,22 +90,28 @@ export function tideAt(tide, t) {
 }
 
 // Live buoy reading against what the forecast said for the same hour.
+// Uses the forecast made at the buoy itself when the data has it (like for
+// like); otherwise falls back to the spot's forecast and says so (where: 'spot').
 export function buoyVsForecast(buoy, fc) {
   const obs = buoy?.latest;
   if (!obs || obs.wave_height_ft == null) return null;
-  const i = nearestIndex(fc.time, obs.time, 90 * 60);
-  if (i < 0) return { obs, forecast: null, delta: null };
-  const m = fc.marine;
+  const atBuoy = buoy.forecast?.time?.length ? buoy.forecast : null;
+  const src = atBuoy || { time: fc.time, ...fc.marine };
+  const where = atBuoy ? 'buoy' : 'spot';
+  const i = nearestIndex(src.time, obs.time, 90 * 60);
+  if (i < 0) return { obs, forecast: null, delta: null, where };
   const forecast = {
-    time: fc.time[i],
-    height: m.wave_height[i],
-    period: m.wave_period[i],
-    dir: m.wave_direction[i],
-    water: m.sea_surface_temperature[i],
+    time: src.time[i],
+    height: src.wave_height[i],
+    // Peak period matches the buoy's dominant period; older data only has the mean.
+    period: src.wave_peak_period?.[i] ?? src.wave_period[i],
+    periodKind: src.wave_peak_period?.[i] != null ? 'peak' : 'mean',
+    dir: src.wave_direction[i],
+    water: src.sea_surface_temperature[i],
   };
   const delta = forecast.height == null ? null
     : Math.round((obs.wave_height_ft - forecast.height) * 10) / 10;
-  return { obs, forecast, delta };
+  return { obs, forecast, delta, where };
 }
 
 export function distanceMi(lat1, lon1, lat2, lon2) {
