@@ -24,3 +24,16 @@ jobs:
         run: ruff check .
       - name: Tests
         run: pytest -q
+
+  app:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+      - name: App unit tests
+        run: npm test
+      - name: Syntax check
+        run: for f in app/js/*.js app/sw.js; do node --check "$f" || exit 1; done

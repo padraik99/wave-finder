@@ -1,0 +1,58 @@
+# Builds the site GitHub Pages serves: the app from main plus the latest
+# forecast data from the `data` branch at ./data/. Same origin for both, so
+# the service worker can cache data with no cross-site rules.
+# Runs after every successful data fetch, and when the app changes.
+name: Deploy app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "app/**"
+      - .github/workflows/pages.yml
+  workflow_run:
+    workflows: ["Fetch data"]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: main
+      - name: Assemble site
+        run: |
+          cp -r app site
+          # Each app release gets a new service-worker cache.
+          sed -i "s/__BUILD__/$(git rev-parse --short HEAD)/" site/sw.js
+          mkdir site/data
+          git fetch --depth=1 origin data
+          git archive FETCH_HEAD | tar -x -C site/data
+          du -sh site site/data
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

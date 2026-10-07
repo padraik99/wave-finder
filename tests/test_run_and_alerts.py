@@ -17,6 +17,11 @@ def test_full_run_writes_all_outputs(tmp_path, healthy_session):
     assert len(index["spots"]) == len(doc["spots"])
     mav = next(s for s in index["spots"] if s["id"] == "mavericks")
     assert mav["active_buoy"] == "46012" and mav["active_buoy_role"] == "nearest"
+    # Outlook starts at the current hour; canned forecast runs 30 h past NOW.
+    out = mav["outlook"]
+    assert out["start"] == NOW
+    assert len(out["wave_height"]) == len(out["wind_speed"]) == len(out["wind"]) == 30
+    assert out["wave_height"][0] == 4.9 and out["wind"][0] == "o"
 
     fc = _load(tmp_path / "forecast" / "mavericks.json")
     assert len(fc["time"]) == 48
@@ -123,6 +128,21 @@ def test_ntfy_skips_without_topic(monkeypatch):
     s = FakeSession({})
     assert ntfy.send(s, "t", "m") is False
     assert s.posts == []
+
+
+def test_ntfy_strict_exits_nonzero_without_topic(monkeypatch):
+    monkeypatch.delenv("NTFY_TOPIC", raising=False)
+    assert ntfy.main(["--title", "t", "--message", "m"]) == 0
+    assert ntfy.main(["--title", "t", "--message", "m", "--strict"]) == 1
+
+
+def test_outlook_handles_missing_forecast_and_past_data():
+    assert run.build_outlook(None, NOW) is None
+    fc = {"time": [NOW - 7200, NOW - 3600], "marine": {"wave_height": [1, 2]},
+          "weather": {"wind_speed_10m": [3, 4]}, "derived": {"wind_relation": [None, "cross"]}}
+    assert run.build_outlook(fc, NOW) is None
+    out = run.build_outlook(fc, NOW - 3000)
+    assert out["start"] == NOW - 3600 and out["wind"] == "c"
 
 
 def test_ntfy_failure_does_not_leak_topic(monkeypatch, capsys):

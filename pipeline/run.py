@@ -3,7 +3,8 @@
     python -m pipeline.run --out data
 
 Output layout (all under --out):
-  index.json             spot list with the buoy currently in use for each spot
+  index.json             spot list with the buoy currently in use for each spot,
+                         plus a 72 h outlook so the app's spot list needs no other file
   meta.json              when each source last succeeded, errors, attribution
   forecast/<spot>.json   hourly marine + wind forecast for one spot
   tides/<station>.json   high/low tides plus hourly heights
@@ -93,6 +94,30 @@ def build_forecast(spot: dict, marine: dict | None, weather: dict | None,
     }
 
 
+# Hours of forecast summarised per spot in index.json, so the app's spot list
+# can show every spot from one small file.
+OUTLOOK_HOURS = 72
+_RELATION_CODE = {"offshore": "o", "cross": "c", "onshore": "n"}
+
+
+def build_outlook(fc: dict | None, now: int, hours: int = OUTLOOK_HOURS) -> dict | None:
+    """Hourly wave height, wind speed and wind label from the current hour on."""
+    if not fc:
+        return None
+    hour = now - now % 3600
+    times = fc["time"]
+    start = next((i for i, t in enumerate(times) if t >= hour), None)
+    if start is None:
+        return None
+    sl = slice(start, start + hours)
+    return {
+        "start": times[start],
+        "wave_height": fc["marine"]["wave_height"][sl],
+        "wind_speed": fc["weather"]["wind_speed_10m"][sl],
+        "wind": "".join(_RELATION_CODE.get(r, "-") for r in fc["derived"]["wind_relation"][sl]),
+    }
+
+
 def _status(prev_meta: dict, path: tuple, ok: bool, now: int, error: str | None = None,
             **extra) -> dict:
     node = prev_meta.get("sources", {})
@@ -132,6 +157,7 @@ def run(out: Path, session, now: int | None = None, spots_file: Path = SPOTS_FIL
         sources["weather"] = _status(prev_meta, ("weather",), False, now, _err(exc))
     any_ok |= sources["marine"]["ok"] or sources["weather"]["ok"]
 
+    forecasts = {}
     for i, spot in enumerate(spot_list):
         path = out / "forecast" / f"{spot['id']}.json"
         prev = read_json(path)
@@ -150,6 +176,7 @@ def run(out: Path, session, now: int | None = None, spots_file: Path = SPOTS_FIL
         fc = build_forecast(spot, marine, weather, marine_updated, weather_updated, sun)
         if fc:
             write_json(path, fc)
+        forecasts[spot["id"]] = fc
 
     # --- Tides: one request per station ---------------------------------------
     begin = (datetime.fromtimestamp(now, UTC) - timedelta(days=1)).date()
@@ -201,6 +228,7 @@ def run(out: Path, session, now: int | None = None, spots_file: Path = SPOTS_FIL
             "active_buoy_role": role,
             "tide_station": spot["tide_station"],
             "forecast": f"forecast/{spot['id']}.json",
+            "outlook": build_outlook(forecasts.get(spot["id"]), now),
         })
 
     write_json(out / "index.json", {"generated_at": iso(now), "spots": index_spots})
