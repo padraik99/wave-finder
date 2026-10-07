@@ -8,7 +8,8 @@ Output layout (all under --out):
   meta.json              when each source last succeeded, errors, attribution
   forecast/<spot>.json   hourly marine + wind forecast for one spot
   tides/<station>.json   high/low tides plus hourly heights
-  buoys/<id>.json        latest observation and the last 48 h
+  buoys/<id>.json        latest observation, the last 48 h, and the marine forecast
+                         at the buoy itself, so readings compare like for like
 
 A failing source never wipes good data: the previous file stays in place and
 meta.json records the failure. Only a run where every source fails exits non-zero.
@@ -118,6 +119,28 @@ def build_outlook(fc: dict | None, now: int, hours: int = OUTLOOK_HOURS) -> dict
     }
 
 
+# Forecast variables kept at each buoy's location, and how far ahead.
+BUOY_FORECAST_VARS = [
+    "wave_height", "wave_peak_period", "wave_period", "wave_direction",
+    "swell_wave_height", "swell_wave_period", "swell_wave_direction",
+    "sea_surface_temperature",
+]
+BUOY_FORECAST_AHEAD_HOURS = 48
+
+
+def build_buoy_forecast(marine: dict | None, now: int, updated: str) -> dict | None:
+    """Marine forecast at a buoy, from the start of the forecast to 48 h ahead."""
+    if not marine:
+        return None
+    end = now + BUOY_FORECAST_AHEAD_HOURS * 3600
+    keep = [i for i, t in enumerate(marine["time"]) if t <= end]
+    return {
+        "updated": updated,
+        "time": [marine["time"][i] for i in keep],
+        **{v: [marine[v][i] for i in keep] for v in BUOY_FORECAST_VARS},
+    }
+
+
 def _status(prev_meta: dict, path: tuple, ok: bool, now: int, error: str | None = None,
             **extra) -> dict:
     node = prev_meta.get("sources", {})
@@ -139,12 +162,17 @@ def run(out: Path, session, now: int | None = None, spots_file: Path = SPOTS_FIL
     sources: dict = {"tides": {}, "buoys": {}}
     any_ok = False
 
-    # --- Open-Meteo: one request per API covering every spot -------------------
+    # --- Open-Meteo: one request per API covering every spot (and buoy) --------
     spot_list = doc["spots"]
+    buoy_ids = spots.used_buoys(doc)
     marine_points = [spots.forecast_point(s) for s in spot_list]
+    marine_points += [(doc["buoys"][b]["lat"], doc["buoys"][b]["lon"]) for b in buoy_ids]
     beach_points = [(s["lat"], s["lon"]) for s in spot_list]
+    buoy_marine: dict = {}
     try:
         marine_all = openmeteo.fetch_marine(session, marine_points, forecast_days)
+        buoy_marine = dict(zip(buoy_ids, marine_all[len(spot_list):], strict=True))
+        marine_all = marine_all[:len(spot_list)]
         sources["marine"] = _status(prev_meta, ("marine",), True, now)
     except Exception as exc:
         marine_all = None
@@ -194,11 +222,16 @@ def run(out: Path, session, now: int | None = None, spots_file: Path = SPOTS_FIL
 
     # --- Buoys ----------------------------------------------------------------
     summaries = {}
-    for buoy_id in spots.used_buoys(doc):
+    for buoy_id in buoy_ids:
         try:
             summary = buoys.fetch(session, buoy_id, now)
             summary["name"] = doc["buoys"][buoy_id]["name"]
             summary["updated"] = iso(now)
+            if buoy_id in buoy_marine:
+                summary["forecast"] = build_buoy_forecast(buoy_marine[buoy_id], now, iso(now))
+            else:  # marine fetch failed: keep the last forecast for this buoy
+                prev = read_json(out / "buoys" / f"{buoy_id}.json") or {}
+                summary["forecast"] = prev.get("forecast")
             write_json(out / "buoys" / f"{buoy_id}.json", summary)
             summaries[buoy_id] = summary
             live = buoys.is_live(summary, now, BUOY_LIVE_HOURS)

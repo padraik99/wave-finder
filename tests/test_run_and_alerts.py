@@ -34,6 +34,13 @@ def test_full_run_writes_all_outputs(tmp_path, healthy_session):
     assert tide["hourly"]["height"]
     buoy = _load(tmp_path / "buoys" / "46012.json")
     assert buoy["latest"]["wave_height_ft"] == 6.9
+    # Forecast at the buoy's own location, to compare like for like.
+    bf = buoy["forecast"]
+    assert bf["time"] and bf["time"][-1] <= NOW + 48 * 3600
+    assert bf["wave_height"][0] == 4.9 and bf["wave_peak_period"][0] == 14.0
+    marine_call = next(c for c in healthy_session.calls if "marine-api" in c[0])
+    n_points = len(marine_call[1]["latitude"].split(","))
+    assert n_points == len(doc["spots"]) + len(spots.used_buoys(doc))
 
     meta = _load(tmp_path / "meta.json")
     assert meta["sources"]["marine"]["ok"]
@@ -56,6 +63,8 @@ def test_failed_source_keeps_previous_data(tmp_path, healthy_session):
     after = _load(tmp_path / "forecast" / "mavericks.json")
     assert after["marine"] == before["marine"]                 # carried over
     assert after["marine_updated"] == before["marine_updated"]
+    # The buoy file is rewritten, but its forecast is the last good one.
+    assert _load(tmp_path / "buoys" / "46012.json")["forecast"]["updated"] == run.iso(NOW)
     assert after["weather_updated"] != before["weather_updated"]  # refreshed
     meta = _load(tmp_path / "meta.json")
     assert meta["sources"]["marine"]["ok"] is False

@@ -6,6 +6,7 @@ the standard approximation for a smooth tide curve.
 """
 
 import math
+import time
 from datetime import UTC, date, datetime, timedelta
 
 from .http import FetchError, get_json
@@ -69,8 +70,21 @@ def interpolate_hourly(extremes: list[dict]) -> dict:
     return {"time": times, "height": heights, "rising": rising}
 
 
-def fetch(session, station: str, begin: date, days: int) -> dict:
-    extremes = parse_hilo(get_json(session, COOPS_URL, params(station, begin, days)))
+# CO-OPS sometimes answers a valid request with an error inside an HTTP 200
+# ("No Predictions data was found...") and succeeds seconds later, so the HTTP
+# layer's retries never see it. Retry those a couple of times before failing.
+RETRY_DELAYS_S = (2, 5)
+
+
+def fetch(session, station: str, begin: date, days: int, sleep=time.sleep) -> dict:
+    for delay in (*RETRY_DELAYS_S, None):
+        try:
+            extremes = parse_hilo(get_json(session, COOPS_URL, params(station, begin, days)))
+            break
+        except FetchError:
+            if delay is None:
+                raise
+            sleep(delay)
     return {
         "station": station,
         "datum": "MLLW",

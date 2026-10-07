@@ -377,7 +377,7 @@ class SpotView {
     const head = `<h3>Live buoy <small>${esc(buoy.name)} (${esc(buoy.id)})${
       entry.active_buoy_role === 'fallback' ? ' · fallback' : ''}</small></h3>`;
     if (!cmp) return `${head}<p class="muted">The buoy is reporting, but not wave height.</p>`;
-    const { obs, forecast, delta } = cmp;
+    const { obs, forecast, delta, where } = cmp;
     const sp = buoy.latest_spectral;
     const verdict = delta == null ? ''
       : Math.abs(delta) < 0.5 ? 'Running about as forecast.'
@@ -386,10 +386,10 @@ class SpotView {
     return `${head}
       <p class="muted">Reading ${fmtAge(now() - obs.time)} (${fmtTime(obs.time)})${dist != null ? ` · ${dist} mi from the spot` : ''}</p>
       <table class="vs">
-        <thead><tr><th></th><th>Buoy now</th><th>Forecast</th></tr></thead>
+        <thead><tr><th></th><th>Buoy now</th><th>Forecast ${where === 'buoy' ? 'at buoy' : 'at spot'}</th></tr></thead>
         <tbody>
           <tr><th>Wave height</th><td><b>${ft(obs.wave_height_ft)}</b> ft</td><td>${forecast ? `${ft(forecast.height)} ft` : '–'}</td></tr>
-          <tr><th>Period</th><td>${whole(obs.dominant_period_s)} s <small>dominant</small></td><td>${forecast ? `${whole(forecast.period)} s <small>mean</small>` : '–'}</td></tr>
+          <tr><th>Period</th><td>${whole(obs.dominant_period_s)} s <small>dominant</small></td><td>${forecast ? `${whole(forecast.period)} s <small>${forecast.periodKind}</small>` : '–'}</td></tr>
           <tr><th>Direction</th><td>${compass(obs.mean_wave_dir_deg)}</td><td>${forecast ? compass(forecast.dir) : '–'}</td></tr>
           <tr><th>Water</th><td>${whole(obs.water_temp_f)}°F</td><td>${forecast ? `${whole(forecast.water)}°F` : '–'}</td></tr>
         </tbody>
@@ -397,7 +397,9 @@ class SpotView {
       ${verdict ? `<p class="verdict ${delta > 0.4 ? 'up' : delta < -0.4 ? 'down' : ''}">${verdict}</p>` : ''}
       ${sp && sp.swell_height_ft != null ? `<p class="muted">Swell part: ${ft(sp.swell_height_ft)} ft @ ${whole(sp.swell_period_s)} s from ${compass(sp.swell_dir_deg)};
         wind waves ${ft(sp.wind_wave_height_ft)} ft.</p>` : ''}
-      <p class="fine">The forecast is for the spot; the buoy sits offshore, so expect some difference even on a good day.</p>`;
+      <p class="fine">${where === 'buoy'
+        ? 'Forecast for the buoy\'s own position, so this shows how the model is doing today. Waves at the spot can differ, especially where it is sheltered.'
+        : 'Forecast for the spot; the buoy sits offshore, so expect some difference even on a good day.'}</p>`;
   }
 }
 

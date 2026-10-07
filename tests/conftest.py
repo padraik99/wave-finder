@@ -148,3 +148,11 @@ def healthy_routes():
 @pytest.fixture
 def healthy_session():
     return FakeSession(healthy_routes())
+
+
+@pytest.fixture(autouse=True)
+def no_retry_waits(monkeypatch):
+    """Tide retries wait seconds between attempts in production; not in tests."""
+    from pipeline import tides
+
+    monkeypatch.setattr(tides, "RETRY_DELAYS_S", (0, 0))
