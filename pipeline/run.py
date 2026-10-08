@@ -121,7 +121,9 @@ def build_outlook(fc: dict | None, now: int, hours: int = OUTLOOK_HOURS) -> dict
 
 # Forecast variables kept at each buoy's location, and how far ahead.
 BUOY_FORECAST_VARS = [
-    "wave_height", "wave_peak_period", "wave_period", "wave_direction",
+    # No wave_peak_period: Open-Meteo returns it all-null for this coast (checked
+    # 2026-10-07), so period compares the buoy's dominant with the mean.
+    "wave_height", "wave_period", "wave_direction",
     "swell_wave_height", "swell_wave_period", "swell_wave_direction",
     "sea_surface_temperature",
 ]

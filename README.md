@@ -10,7 +10,7 @@ It answers three questions:
 
 ## How it works
 
-- A Python script runs every few hours on GitHub Actions. It pulls free public data (Open-Meteo marine and wind forecasts, NOAA tides, NDBC/CDIP buoys) and publishes JSON.
+- A Python script runs hourly on GitHub Actions. It pulls free public data (Open-Meteo marine and wind forecasts, NOAA tides, NDBC/CDIP buoys) and publishes JSON.
 - The app is plain HTML/CSS/JavaScript served from GitHub Pages. It reads that JSON and caches it, so the last forecast still works with weak signal on the coast.
 - Alerts go to the ntfy app on Android.
 
@@ -27,7 +27,7 @@ Phase 0 (scope) and Phase 1 (data pipeline) done. Phase 2 (installable app shell
 | Tests (offline, canned API responses) | `tests/` |
 | Workflows | `.github/workflows/` |
 
-Published data lives on the **`data` branch** (one commit, replaced every run), not on `main`. Committing forecasts to `main` every 3 hours would grow the repo by megabytes a day and leave your local copy permanently behind.
+Published data lives on the **`data` branch** (one commit, replaced every run), not on `main`. Committing forecasts to `main` every hour would grow the repo by megabytes a day and leave your local copy permanently behind.
 
 ```
 data branch
@@ -42,7 +42,7 @@ data branch
 ### Workflows
 
 - **CI**: ruff + pytest on every push.
-- **Fetch data**: every 3 h; publishes to `data`. Alerts via ntfy if it fails.
+- **Fetch data**: hourly (GitHub skips some scheduled runs, so hourly keeps data within a few hours); publishes to `data`. Alerts via ntfy if it fails.
 - **Staleness check**: every 6 h; alerts via ntfy if any source hasn't updated.
 - **Deploy app**: after every successful fetch and on app changes; publishes `app/` plus the `data` branch to GitHub Pages.
 - **Send test alert**: manual button that sends one ntfy message; goes red if the secret is missing or ntfy refuses it.
@@ -62,7 +62,7 @@ Plain HTML/CSS/JS in `app/`, no build step. GitHub Pages serves it at
 `https://padraik99.github.io/wave-finder/` with the data at `./data/` on the same site.
 
 - **Region list**: every spot with the current wave height, wind label and a 72 h bar strip, all from `index.json` (about 5 KB compressed).
-- **Spot detail**: hour scrubber (drag the strip, tap a day to jump to first light, or step ±1 h / ±3 h). For the chosen hour: swell trains with an in-window/blocked flag, wind as an arrow against the beach, tide height and direction, water and air temperature, first light / sunrise / sunset / last light. Live buoy panel compares the latest reading with the forecast made for the buoy's own position at that hour (wave height, peak period, direction, water temperature), so the gap shows how the model is doing, not how sheltered the spot is.
+- **Spot detail**: hour scrubber (drag the strip, tap a day to jump to first light, or step ±1 h / ±3 h). For the chosen hour: swell trains with an in-window/blocked flag, wind as an arrow against the beach, tide height and direction, water and air temperature, first light / sunrise / sunset / last light. Live buoy panel compares the latest reading with the forecast made for the buoy's own position at that hour (wave height, period, direction, water temperature), so the gap shows how the model is doing, not how sheltered the spot is.
 - **Offline**: a service worker caches the app and every data file you open. Data is network-first with an 8 s timeout, then the saved copy, with an "Offline" banner. The last 3 spots you opened are refreshed in the background while the connection is good.
 - **Per refresh**: the region list costs about 5 KB; opening a spot costs about 25 to 35 KB (forecast, tide, buoy). Unchanged files come back as 304s.
 - First and last light are computed on the phone (`app/js/sun.js`); its sunrise/sunset agree with Open-Meteo's to within 2 minutes.
