@@ -5,7 +5,10 @@ name: Fetch data
 
 on:
   schedule:
-    - cron: "17 */3 * * *"   # every 3 h, off the hour (top-of-hour runs get delayed most)
+    # Hourly, off the hour. GitHub's scheduler skips many runs on this repo
+    # (2 of 6 three-hourly slots ran on 2026-10-08), so asking every hour keeps
+    # data fresh enough. Runs take ~30 s and are free on a public repo.
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 permissions:
