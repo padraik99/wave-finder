@@ -1,0 +1,684 @@
+{
+  "version": 1,
+  "_comment": "Directions are compass degrees. facing_deg: the way the beach faces (toward the sea). swell_window: swell directions (where swell comes FROM) that reach the spot, clockwise from 'from' to 'to'. Geometry is estimated from coastline shape, not surveyed; tune as you learn each spot.",
+  "regions": [
+    {
+      "id": "north_coast",
+      "name": "North Coast",
+      "description": "Humboldt to Marin"
+    },
+    {
+      "id": "san_francisco",
+      "name": "San Francisco",
+      "description": "Ocean Beach to Pacifica"
+    },
+    {
+      "id": "half_moon_bay",
+      "name": "Half Moon Bay",
+      "description": "Montara to Half Moon Bay, incl. Mavericks"
+    },
+    {
+      "id": "santa_cruz",
+      "name": "Santa Cruz",
+      "description": "Waddell Creek to Moss Landing"
+    },
+    {
+      "id": "slo",
+      "name": "San Luis Obispo",
+      "description": "Cayucos to Pismo"
+    }
+  ],
+  "spots": [
+    {
+      "id": "north_jetty_humboldt",
+      "name": "North Jetty (Humboldt)",
+      "region": "north_coast",
+      "lat": 40.768,
+      "lon": -124.237,
+      "facing_deg": 280,
+      "swell_window": {
+        "from": 200,
+        "to": 330
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46244",
+        "fallback": "46022"
+      },
+      "tide_station": "9418767",
+      "notes": "Harbor-mouth jetty break. Strong currents and sharks; experienced surfers."
+    },
+    {
+      "id": "shelter_cove",
+      "name": "Shelter Cove",
+      "region": "north_coast",
+      "lat": 40.023,
+      "lon": -124.07,
+      "facing_deg": 190,
+      "swell_window": {
+        "from": 160,
+        "to": 280
+      },
+      "break_type": "point",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46213",
+        "fallback": "46014"
+      },
+      "tide_station": "9418767",
+      "notes": "South-facing cove; sheltered from NW wind and swell. Tide station is ~85 km north."
+    },
+    {
+      "id": "arena_cove",
+      "name": "Arena Cove (Point Arena)",
+      "region": "north_coast",
+      "lat": 38.914,
+      "lon": -123.712,
+      "facing_deg": 255,
+      "swell_window": {
+        "from": 200,
+        "to": 310
+      },
+      "break_type": "reef",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46014",
+        "fallback": "46013"
+      },
+      "tide_station": "9416841",
+      "notes": "Shallow reef by the pier. Heavy when big."
+    },
+    {
+      "id": "salmon_creek",
+      "name": "Salmon Creek",
+      "region": "north_coast",
+      "lat": 38.353,
+      "lon": -123.069,
+      "facing_deg": 255,
+      "swell_window": {
+        "from": 200,
+        "to": 320
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46013",
+        "fallback": "46214"
+      },
+      "tide_station": "9415020",
+      "notes": "Exposed Sonoma beach break; picks up most swell."
+    },
+    {
+      "id": "dillon_beach",
+      "name": "Dillon Beach",
+      "region": "north_coast",
+      "lat": 38.247,
+      "lon": -122.968,
+      "facing_deg": 270,
+      "swell_window": {
+        "from": 210,
+        "to": 320
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46013",
+        "fallback": "46214"
+      },
+      "tide_station": "9415020",
+      "notes": "Beginner-friendly beach break at the mouth of Tomales Bay."
+    },
+    {
+      "id": "bolinas",
+      "name": "Bolinas",
+      "region": "north_coast",
+      "lat": 37.907,
+      "lon": -122.684,
+      "facing_deg": 200,
+      "swell_window": {
+        "from": 180,
+        "to": 270
+      },
+      "break_type": "point",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46214",
+        "fallback": "46026"
+      },
+      "tide_station": "9414958",
+      "notes": "Mellow, long-board friendly. Needs S or big W swell; blocked from NW."
+    },
+    {
+      "id": "stinson_beach",
+      "name": "Stinson Beach",
+      "region": "north_coast",
+      "lat": 37.899,
+      "lon": -122.643,
+      "facing_deg": 205,
+      "swell_window": {
+        "from": 180,
+        "to": 280
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46214",
+        "fallback": "46026"
+      },
+      "tide_station": "9414958",
+      "notes": "Sheltered beach break; good small-wave family spot."
+    },
+    {
+      "id": "ocean_beach_sf",
+      "name": "Ocean Beach (SF)",
+      "region": "san_francisco",
+      "lat": 37.759,
+      "lon": -122.511,
+      "facing_deg": 265,
+      "swell_window": {
+        "from": 200,
+        "to": 320
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46237",
+        "fallback": "46026"
+      },
+      "tide_station": "9414290",
+      "notes": "Powerful, rip-prone beach break; paddle-outs are hard above head high."
+    },
+    {
+      "id": "fort_point",
+      "name": "Fort Point",
+      "region": "san_francisco",
+      "lat": 37.8105,
+      "lon": -122.477,
+      "facing_deg": 315,
+      "swell_window": {
+        "from": 255,
+        "to": 295
+      },
+      "break_type": "point",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46237",
+        "fallback": "46026"
+      },
+      "tide_station": "9414290",
+      "forecast_point": {
+        "lat": 37.79,
+        "lon": -122.56
+      },
+      "notes": "Inside the Golden Gate: only big W-WNW swell gets through. Strong tidal currents."
+    },
+    {
+      "id": "linda_mar",
+      "name": "Linda Mar (Pacifica)",
+      "region": "san_francisco",
+      "lat": 37.594,
+      "lon": -122.503,
+      "facing_deg": 285,
+      "swell_window": {
+        "from": 230,
+        "to": 300
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46237",
+        "fallback": "46012"
+      },
+      "tide_station": "9414131",
+      "notes": "Pedro Point shelters it from NW wind; reliable beginner beach break."
+    },
+    {
+      "id": "montara",
+      "name": "Montara State Beach",
+      "region": "half_moon_bay",
+      "lat": 37.546,
+      "lon": -122.515,
+      "facing_deg": 270,
+      "swell_window": {
+        "from": 210,
+        "to": 320
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46012",
+        "fallback": "46237"
+      },
+      "tide_station": "9414131",
+      "notes": "Exposed beach break; picks up more swell than Half Moon Bay proper."
+    },
+    {
+      "id": "mavericks",
+      "name": "Mavericks",
+      "region": "half_moon_bay",
+      "lat": 37.4925,
+      "lon": -122.501,
+      "facing_deg": 290,
+      "swell_window": {
+        "from": 250,
+        "to": 320
+      },
+      "break_type": "reef",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46012",
+        "fallback": "46214"
+      },
+      "tide_station": "9414131",
+      "skill": "expert_only",
+      "notes": "Big-wave reef off Pillar Point. Experts only. Very low tide exposes the boneyard rocks."
+    },
+    {
+      "id": "surfers_beach",
+      "name": "Surfer's Beach (El Granada)",
+      "region": "half_moon_bay",
+      "lat": 37.4975,
+      "lon": -122.468,
+      "facing_deg": 200,
+      "swell_window": {
+        "from": 190,
+        "to": 290
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46012",
+        "fallback": "46214"
+      },
+      "tide_station": "9414131",
+      "notes": "Small, sheltered beach break east of the harbor breakwater."
+    },
+    {
+      "id": "half_moon_bay_state_beach",
+      "name": "Half Moon Bay State Beach",
+      "region": "half_moon_bay",
+      "lat": 37.474,
+      "lon": -122.449,
+      "facing_deg": 245,
+      "swell_window": {
+        "from": 200,
+        "to": 300
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46012",
+        "fallback": "46214"
+      },
+      "tide_station": "9414131",
+      "notes": "Pillar Point blocks some NW swell; softer than Montara."
+    },
+    {
+      "id": "waddell_creek",
+      "name": "Waddell Creek",
+      "region": "santa_cruz",
+      "lat": 37.097,
+      "lon": -122.277,
+      "facing_deg": 225,
+      "swell_window": {
+        "from": 190,
+        "to": 310
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46012",
+        "fallback": "46042"
+      },
+      "tide_station": "9413745",
+      "notes": "Exposed; often windy (kite and windsurf spot by afternoon)."
+    },
+    {
+      "id": "davenport_landing",
+      "name": "Davenport Landing",
+      "region": "santa_cruz",
+      "lat": 37.023,
+      "lon": -122.216,
+      "facing_deg": 225,
+      "swell_window": {
+        "from": 190,
+        "to": 310
+      },
+      "break_type": "reef",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46042",
+        "fallback": "46012"
+      },
+      "tide_station": "9413745",
+      "notes": "Reef/point on the open north coast; exposed to NW wind."
+    },
+    {
+      "id": "steamer_lane",
+      "name": "Steamer Lane",
+      "region": "santa_cruz",
+      "lat": 36.951,
+      "lon": -122.025,
+      "facing_deg": 200,
+      "swell_window": {
+        "from": 190,
+        "to": 300
+      },
+      "break_type": "point",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46042",
+        "fallback": "46236"
+      },
+      "tide_station": "9413745",
+      "notes": "Classic right point. W-NW swell wraps into the bay; crowded."
+    },
+    {
+      "id": "cowells",
+      "name": "Cowell's",
+      "region": "santa_cruz",
+      "lat": 36.961,
+      "lon": -122.023,
+      "facing_deg": 170,
+      "swell_window": {
+        "from": 180,
+        "to": 290
+      },
+      "break_type": "point",
+      "tide_preference": "mid_to_high",
+      "buoy": {
+        "nearest": "46042",
+        "fallback": "46236"
+      },
+      "tide_station": "9413745",
+      "notes": "Soft, slow longboard wave; beginner-friendly. Needs decent swell to wrap."
+    },
+    {
+      "id": "pleasure_point",
+      "name": "Pleasure Point",
+      "region": "santa_cruz",
+      "lat": 36.9575,
+      "lon": -121.9715,
+      "facing_deg": 190,
+      "swell_window": {
+        "from": 170,
+        "to": 290
+      },
+      "break_type": "reef",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46042",
+        "fallback": "46236"
+      },
+      "tide_station": "9413745",
+      "notes": "Series of reef/point breaks; best on W-NW wrap or S swell."
+    },
+    {
+      "id": "manresa",
+      "name": "Manresa State Beach",
+      "region": "santa_cruz",
+      "lat": 36.93,
+      "lon": -121.864,
+      "facing_deg": 230,
+      "swell_window": {
+        "from": 200,
+        "to": 300
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46042",
+        "fallback": "46236"
+      },
+      "tide_station": "9413745",
+      "notes": "Open beach break; bigger than Santa Cruz town spots."
+    },
+    {
+      "id": "moss_landing",
+      "name": "Moss Landing",
+      "region": "santa_cruz",
+      "lat": 36.805,
+      "lon": -121.79,
+      "facing_deg": 270,
+      "swell_window": {
+        "from": 230,
+        "to": 310
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46042",
+        "fallback": "46236"
+      },
+      "tide_station": "9413450",
+      "notes": "Sits at the head of Monterey Canyon, which focuses swell: often the biggest wave in the bay."
+    },
+    {
+      "id": "cayucos",
+      "name": "Cayucos Pier",
+      "region": "slo",
+      "lat": 35.4475,
+      "lon": -120.906,
+      "facing_deg": 210,
+      "swell_window": {
+        "from": 190,
+        "to": 300
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46215",
+        "fallback": "46028"
+      },
+      "tide_station": "9412110",
+      "notes": "SW-facing beach by the pier; sheltered from NW wind."
+    },
+    {
+      "id": "hazard_canyon",
+      "name": "Hazard Canyon (Montana de Oro)",
+      "region": "slo",
+      "lat": 35.289,
+      "lon": -120.885,
+      "facing_deg": 270,
+      "swell_window": {
+        "from": 220,
+        "to": 320
+      },
+      "break_type": "reef",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46215",
+        "fallback": "46028"
+      },
+      "tide_station": "9412110",
+      "notes": "Exposed reef in Montana de Oro; heavy when overhead."
+    },
+    {
+      "id": "morro_rock",
+      "name": "Morro Rock",
+      "region": "slo",
+      "lat": 35.373,
+      "lon": -120.868,
+      "facing_deg": 270,
+      "swell_window": {
+        "from": 210,
+        "to": 320
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46215",
+        "fallback": "46028"
+      },
+      "tide_station": "9412110",
+      "notes": "Beach break north of the rock; consistent."
+    },
+    {
+      "id": "pismo_pier",
+      "name": "Pismo Beach Pier",
+      "region": "slo",
+      "lat": 35.138,
+      "lon": -120.644,
+      "facing_deg": 240,
+      "swell_window": {
+        "from": 200,
+        "to": 290
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46215",
+        "fallback": "46011"
+      },
+      "tide_station": "9412110",
+      "notes": "Sheltered from NW by Point San Luis; small most of the year."
+    }
+  ],
+  "buoys": {
+    "46244": {
+      "name": "Humboldt Bay North Spit",
+      "operator": "CDIP",
+      "cdip_id": "168",
+      "lat": 40.888,
+      "lon": -124.357
+    },
+    "46022": {
+      "name": "Eel River",
+      "operator": "NDBC",
+      "lat": 40.716,
+      "lon": -124.54
+    },
+    "46213": {
+      "name": "Cape Mendocino",
+      "operator": "CDIP",
+      "cdip_id": "094",
+      "lat": 40.295,
+      "lon": -124.732
+    },
+    "46014": {
+      "name": "Point Arena",
+      "operator": "NDBC",
+      "lat": 39.225,
+      "lon": -123.98
+    },
+    "46013": {
+      "name": "Bodega Bay",
+      "operator": "NDBC",
+      "lat": 38.253,
+      "lon": -123.303
+    },
+    "46214": {
+      "name": "Point Reyes",
+      "operator": "CDIP",
+      "cdip_id": "029",
+      "lat": 37.946,
+      "lon": -123.47
+    },
+    "46026": {
+      "name": "San Francisco",
+      "operator": "NDBC",
+      "lat": 37.754,
+      "lon": -122.839
+    },
+    "46237": {
+      "name": "San Francisco Bar",
+      "operator": "CDIP",
+      "cdip_id": "142",
+      "lat": 37.788,
+      "lon": -122.634
+    },
+    "46012": {
+      "name": "Half Moon Bay",
+      "operator": "NDBC",
+      "lat": 37.361,
+      "lon": -122.881
+    },
+    "46042": {
+      "name": "Monterey",
+      "operator": "NDBC",
+      "lat": 36.785,
+      "lon": -122.396
+    },
+    "46236": {
+      "name": "Monterey Canyon Outer",
+      "operator": "CDIP",
+      "cdip_id": "156",
+      "lat": 36.761,
+      "lon": -121.947
+    },
+    "46028": {
+      "name": "Cape San Martin",
+      "operator": "NDBC",
+      "lat": 35.77,
+      "lon": -121.903
+    },
+    "46215": {
+      "name": "Diablo Canyon",
+      "operator": "CDIP",
+      "cdip_id": "076",
+      "lat": 35.204,
+      "lon": -120.859
+    },
+    "46011": {
+      "name": "Santa Maria",
+      "operator": "NDBC",
+      "lat": 34.956,
+      "lon": -121.019
+    },
+    "46059": {
+      "name": "West California (offshore)",
+      "operator": "NDBC",
+      "lat": 38.094,
+      "lon": -129.951,
+      "role": "early_warning"
+    }
+  },
+  "tide_stations": {
+    "9418767": {
+      "name": "North Spit, Humboldt Bay",
+      "lat": 40.7667,
+      "lon": -124.2167
+    },
+    "9416841": {
+      "name": "Arena Cove",
+      "lat": 38.9146,
+      "lon": -123.711
+    },
+    "9415020": {
+      "name": "Point Reyes",
+      "lat": 37.9961,
+      "lon": -122.9767
+    },
+    "9414958": {
+      "name": "Bolinas Lagoon",
+      "lat": 37.908,
+      "lon": -122.6785
+    },
+    "9414290": {
+      "name": "San Francisco",
+      "lat": 37.8063,
+      "lon": -122.4659
+    },
+    "9414131": {
+      "name": "Pillar Point Harbor, Half Moon Bay",
+      "lat": 37.5025,
+      "lon": -122.4822
+    },
+    "9413745": {
+      "name": "Santa Cruz",
+      "lat": 36.9583,
+      "lon": -122.0167
+    },
+    "9413450": {
+      "name": "Monterey",
+      "lat": 36.605,
+      "lon": -121.8883
+    },
+    "9412110": {
+      "name": "Port San Luis",
+      "lat": 35.1689,
+      "lon": -120.7542
+    }
+  }
+}
