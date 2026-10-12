@@ -20,9 +20,12 @@ permissions:
   pages: write
   id-token: write
 
+# A newer deploy replaces an older one. Each build carries the latest data, so
+# nothing is lost, and a deploy stuck in GitHub's "waiting" state (seen
+# 2026-10-10, it blocked every later deploy for 27 h) gets cleared by the next.
 concurrency:
   group: pages
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   build:
