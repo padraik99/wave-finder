@@ -198,7 +198,7 @@ small { font-size: 0.75em; }
 .opener-top { display: flex; justify-content: space-between; align-items: flex-start; padding-top: 24px; }
 .opener h1 { font-size: 2.6rem; line-height: 1; font-weight: 800; letter-spacing: -0.02em; animation: rise 0.6s ease-out both; }
 .eyebrow { margin: 0 0 6px; color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
-.opener-body { display: grid; grid-template-columns: 175px 1fr; gap: 18px; align-items: center; margin: 18px 0 0 -16px; position: relative; z-index: 1; }
+.opener-body { display: grid; grid-template-columns: 175px 1fr; gap: 18px; align-items: center; margin: clamp(18px, 22vh - 100px, 120px) 0 0 -16px; position: relative; z-index: 1; }
 .wheel { display: block; animation: spin-in 0.7s cubic-bezier(.2, .8, .2, 1) both; transform-origin: 0 50%; }
 .wedge path { fill: var(--surface-2); stroke: var(--bg); stroke-width: 2; transition: fill 0.2s; }
 .wedge.sel path { fill: var(--accent); }
