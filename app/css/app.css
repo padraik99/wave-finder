@@ -198,51 +198,45 @@ small { font-size: 0.75em; }
 .opener-top { display: flex; justify-content: space-between; align-items: flex-start; padding-top: 24px; }
 .opener h1 { font-size: 2.6rem; line-height: 1; font-weight: 800; letter-spacing: -0.02em; animation: rise 0.6s ease-out both; }
 .eyebrow { margin: 0 0 6px; color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
-.opener-body { display: grid; grid-template-columns: 140px 1fr; gap: 14px; align-items: start; margin: 12px 0 0 -16px; position: relative; z-index: 1; }
+.opener-body { display: grid; grid-template-columns: 175px 1fr; gap: 18px; align-items: center; margin: 18px 0 0 -16px; position: relative; z-index: 1; }
 .wheel { display: block; animation: spin-in 0.7s cubic-bezier(.2, .8, .2, 1) both; transform-origin: 0 50%; }
 .wedge path { fill: var(--surface-2); stroke: var(--bg); stroke-width: 2; transition: fill 0.2s; }
 .wedge.sel path { fill: var(--accent); }
-.wedge .w-name { fill: var(--text); font-size: 14px; font-weight: 700; }
-.wedge .w-count { fill: var(--muted); font-size: 11px; }
+.wedge .w-name { fill: var(--text); font-size: 17px; font-weight: 700; }
+.wedge .w-count { fill: var(--muted); font-size: 12px; }
 .wedge.sel .w-name, .wedge.sel .w-count { fill: #04121d; }
 .wedge.empty { opacity: 0.45; }
 .wedge:focus-visible path { stroke: var(--text); }
-.starred { min-width: 0; display: grid; gap: 8px; }
-.starred h2 { margin: 6px 0 0; }
-.best {
+.zone-pick { min-width: 0; }
+.zone-pick .eyebrow { margin: 0; }
+.zone-name { margin: 0; font-size: 2.2rem; font-weight: 800; line-height: 1.1; }
+#zone-desc { font-size: 0.85rem; min-height: 2.5em; }
+.starred { position: relative; z-index: 1; margin-top: 22px; display: grid; gap: 8px; }
+.starred h2 { margin: 0; }
+.best-line { margin: 0; font-size: 0.95rem; }
+.best-line small { display: block; color: var(--muted); }
+.star-cards { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.star-card {
   display: grid;
-  gap: 2px;
+  gap: 6px;
   padding: 12px 14px;
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--accent) 20%, var(--surface));
-  border: 1px solid var(--accent);
-  color: var(--text);
-  text-decoration: none;
-}
-.best .eyebrow { margin: 0; }
-.best-name { font-weight: 700; }
-.best-num { font-size: 1.8rem; font-weight: 700; font-variant-numeric: tabular-nums; display: flex; align-items: center; gap: 8px; }
-.best-num small { font-size: 0.9rem; color: var(--muted); font-weight: 500; }
-.star-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-.star-row {
-  display: grid;
-  grid-template-columns: 1fr auto auto;
-  gap: 8px;
-  align-items: center;
-  min-height: 48px;
-  padding: 6px 12px;
-  border-radius: 12px;
   background: var(--surface);
   color: var(--text);
   text-decoration: none;
+  border: 1px solid transparent;
 }
-.star-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.star-row small { color: var(--muted); font-weight: 400; }
-.dot { width: 10px; height: 10px; border-radius: 50%; background: var(--rel, var(--none)); }
+.star-card.top { border-color: var(--accent); }
+.sc-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.star-name { font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sc-num { font-size: 1.5rem; font-variant-numeric: tabular-nums; }
+.sc-num small { font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+.sc-wind { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sc-feature { color: var(--muted); font-size: 0.85rem; }
 .hint { font-size: 0.9rem; }
-.go { display: grid; place-items: center; margin-top: 20px; text-decoration: none; border-radius: 999px; position: relative; z-index: 1; }
-.opener .fine { position: relative; z-index: 1; }
-.waves { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 160px; pointer-events: none; }
+.go { display: grid; place-items: center; margin-top: 10px; text-decoration: none; border-radius: 999px; }
+.waves { position: absolute; left: 0; right: 0; bottom: 0; width: 100%; height: 140px; pointer-events: none; z-index: 0; }
+.opener { padding-bottom: 150px; }
 .waves path { animation: drift 9s ease-in-out infinite alternate; }
 .waves .w1 { fill: color-mix(in srgb, var(--accent) 16%, var(--bg)); }
 .waves .w2 { fill: color-mix(in srgb, var(--accent) 26%, var(--bg)); animation-duration: 7s; animation-direction: alternate-reverse; }
