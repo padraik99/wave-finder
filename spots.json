@@ -26,6 +26,16 @@
       "id": "slo",
       "name": "San Luis Obispo",
       "description": "Cayucos to Pismo"
+    },
+    {
+      "id": "santa_barbara",
+      "name": "Santa Barbara County",
+      "description": "Surf Beach to Rincon"
+    },
+    {
+      "id": "orange_county",
+      "name": "Orange County",
+      "description": "Huntington Beach to the Wedge"
     }
   ],
   "spots": [
@@ -272,7 +282,11 @@
       },
       "tide_station": "9414131",
       "skill": "expert_only",
-      "notes": "Big-wave reef off Pillar Point. Experts only. Very low tide exposes the boneyard rocks."
+      "notes": "Big-wave reef off Pillar Point. Experts only. Very low tide exposes the boneyard rocks.",
+      "big_wave": {
+        "min_ft": 15,
+        "note": "Big day: light wind matters more than its direction. A strong offshore holds the face up, which can hang a paddler at the top until the lip throws them or the wave breaks on them. Light onshore is tolerated here far better than at most breaks."
+      }
     },
     {
       "id": "surfers_beach",
@@ -533,6 +547,150 @@
       },
       "tide_station": "9412110",
       "notes": "Sheltered from NW by Point San Luis; small most of the year."
+    },
+    {
+      "id": "surf_beach_lompoc",
+      "name": "Surf Beach (Lompoc)",
+      "region": "santa_barbara",
+      "lat": 34.683,
+      "lon": -120.605,
+      "facing_deg": 260,
+      "swell_window": {
+        "from": 200,
+        "to": 330
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46218",
+        "fallback": "46011"
+      },
+      "tide_station": "9411406",
+      "notes": "Wide-open beach break beside Vandenberg; picks up everything and is often big and windy. Access is limited in snowy plover nesting season (roughly March to September); check before driving out."
+    },
+    {
+      "id": "jalama",
+      "name": "Jalama Beach",
+      "region": "santa_barbara",
+      "lat": 34.511,
+      "lon": -120.502,
+      "facing_deg": 225,
+      "swell_window": {
+        "from": 180,
+        "to": 310
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46218",
+        "fallback": "46054"
+      },
+      "tide_station": "9411406",
+      "notes": "Remote county-park beach just north of Point Conception, 14 miles of winding road from the highway. Very exposed; afternoons usually blow out. Campground at the beach."
+    },
+    {
+      "id": "rincon",
+      "name": "Rincon",
+      "region": "santa_barbara",
+      "lat": 34.374,
+      "lon": -119.477,
+      "facing_deg": 210,
+      "swell_window": {
+        "from": 240,
+        "to": 290
+      },
+      "break_type": "point",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46053",
+        "fallback": "46054"
+      },
+      "tide_station": "9411340",
+      "notes": "The 'Queen of the Coast': a long right point that lights up on winter W to NW swells. The Channel Islands block most summer south swells. Crowded when it's on."
+    },
+    {
+      "id": "huntington_pier",
+      "name": "Huntington Beach Pier",
+      "region": "orange_county",
+      "lat": 33.655,
+      "lon": -118.005,
+      "facing_deg": 215,
+      "swell_window": {
+        "from": 160,
+        "to": 290
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46253",
+        "fallback": "46222"
+      },
+      "tide_station": "9410580",
+      "notes": "Consistent beach break on both sides of the pier; catches south and west swells. Crowded; keep clear of the pilings."
+    },
+    {
+      "id": "newport_56th",
+      "name": "Newport 56th Street",
+      "region": "orange_county",
+      "lat": 33.62,
+      "lon": -117.952,
+      "facing_deg": 215,
+      "swell_window": {
+        "from": 160,
+        "to": 280
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46253",
+        "fallback": "46222"
+      },
+      "tide_station": "9410580",
+      "bodyboard": true,
+      "notes": "Jetty-groomed sandbar peaks from 48th to 56th Street. Short, punchy, wedgy waves that suit bodyboarding; closes out when it gets big. Best on south and southwest swell."
+    },
+    {
+      "id": "newport_pier",
+      "name": "Newport Pier",
+      "region": "orange_county",
+      "lat": 33.607,
+      "lon": -117.93,
+      "facing_deg": 215,
+      "swell_window": {
+        "from": 160,
+        "to": 280
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46253",
+        "fallback": "46222"
+      },
+      "tide_station": "9410580",
+      "bodyboard": true,
+      "notes": "Beach break around the pier; Blackies, just north, is softer and friendly for learners and longboards. Fun shorebreak for bodyboarding. In summer a blackball flag limits hard boards at midday; check the posted flag."
+    },
+    {
+      "id": "the_wedge",
+      "name": "The Wedge",
+      "region": "orange_county",
+      "lat": 33.593,
+      "lon": -117.882,
+      "facing_deg": 190,
+      "swell_window": {
+        "from": 150,
+        "to": 230
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46253",
+        "fallback": "46222"
+      },
+      "tide_station": "9410580",
+      "skill": "expert_only",
+      "bodyboard": true,
+      "notes": "World-famous shorebreak at the tip of the Balboa Peninsula: south swells bounce off the jetty and stack into huge wedges that break on dry sand. Bodysurfing and expert bodyboarding only. City rules ban boards 10 am to 5 pm, May to October (check current rules). Great to watch from the sand."
     }
   ],
   "buoys": {
@@ -632,6 +790,39 @@
       "lat": 38.094,
       "lon": -129.951,
       "role": "early_warning"
+    },
+    "46218": {
+      "name": "Harvest",
+      "operator": "CDIP",
+      "cdip_id": "071",
+      "lat": 34.452,
+      "lon": -120.78
+    },
+    "46054": {
+      "name": "West Santa Barbara",
+      "operator": "NDBC",
+      "lat": 34.265,
+      "lon": -120.477
+    },
+    "46053": {
+      "name": "East Santa Barbara",
+      "operator": "NDBC",
+      "lat": 34.241,
+      "lon": -119.839
+    },
+    "46253": {
+      "name": "San Pedro South",
+      "operator": "CDIP",
+      "cdip_id": "213",
+      "lat": 33.576,
+      "lon": -118.181
+    },
+    "46222": {
+      "name": "San Pedro",
+      "operator": "CDIP",
+      "cdip_id": "092",
+      "lat": 33.618,
+      "lon": -118.317
     }
   },
   "tide_stations": {
@@ -679,6 +870,21 @@
       "name": "Port San Luis",
       "lat": 35.1689,
       "lon": -120.7542
+    },
+    "9411406": {
+      "name": "Oil Platform Harvest",
+      "lat": 34.4688,
+      "lon": -120.6822
+    },
+    "9411340": {
+      "name": "Santa Barbara",
+      "lat": 34.4083,
+      "lon": -119.685
+    },
+    "9410580": {
+      "name": "Newport Bay Entrance, Corona del Mar",
+      "lat": 33.6033,
+      "lon": -117.8833
     }
   }
 }
