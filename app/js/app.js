@@ -1,8 +1,12 @@
-// Wave Finder app: two screens, hash-routed.
-//   #/            region list (every spot, now + 72 h outlook)
+// Wave Finder app: hash-routed screens.
+//   #/            opener: region wheel and starred spots
+//   #/zone/<id>   one zone's spots, now + 72 h outlook
 //   #/spot/<id>   spot detail with the hour scrubber and live buoy panel
 
-import { clearMemo, getJSON, goodConnection, noteRecent, recentSpots } from './data.js';
+import {
+  aboutOpen, clearMemo, getJSON, goodConnection, isStarred, lastZone, noteAboutOpen, noteRecent,
+  noteZone, recentSpots, starredSpots, toggleStar,
+} from './data.js';
 import {
   RELATION, buoyVsForecast, compass, distanceMi, fmtAge, fmtDate, fmtHour, fmtTime, fmtWeekday,
   ft, hourIndex, localDayKey, swellTrains, tideAt, weatherLabel, whole,
@@ -12,7 +16,14 @@ import { dirArrow, relClass, scrubberStrip, sparkline, tideCurve, windDiagram } 
 
 const $app = document.getElementById('app');
 const BAR_W = 12;
-const STALE_AFTER_S = 4.5 * 3600; // fetch runs every 3 h; allow one late run
+const STALE_AFTER_S = 2.5 * 3600; // fetch runs hourly; allow a late run or two
+
+// The wheel's three zones, north to south, each a list of spots.json regions.
+const ZONES = [
+  { id: 'norcal', name: 'NorCal', regions: ['north_coast', 'san_francisco', 'half_moon_bay', 'santa_cruz'] },
+  { id: 'central', name: 'Central', regions: ['slo', 'santa_barbara'] },
+  { id: 'socal', name: 'SoCal', regions: ['orange_county'] },
+];
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({
   '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
@@ -44,9 +55,111 @@ function errorScreen(err, what = "Couldn't load data and nothing is saved yet.")
     <button class="btn" onclick="location.reload()">Try again</button></main>`;
 }
 
-// ---- Region list -----------------------------------------------------------
+// Zone of a region. A region missing from ZONES (added to spots.json later)
+// goes by its spots' latitude, so it still shows up somewhere sensible.
+function zoneOf(regionId, spots) {
+  const z = ZONES.find((zz) => zz.regions.includes(regionId));
+  if (z) return z.id;
+  const lats = spots.spots.filter((s) => s.region === regionId).map((s) => s.lat);
+  const lat = lats.reduce((a, b) => a + b, 0) / (lats.length || 1);
+  return lat > 36.5 ? 'norcal' : lat > 34.2 ? 'central' : 'socal';
+}
 
-async function renderHome(fresh = false) {
+function zoneRegions(zoneId, spots) {
+  return spots.regions.filter((r) => zoneOf(r.id, spots) === zoneId);
+}
+
+// Spots of a zone in list order: north to south as spots.json has them.
+function zoneSpots(zoneId, spots) {
+  const ids = zoneRegions(zoneId, spots).map((r) => r.id);
+  return ids.flatMap((rid) => spots.spots.filter((s) => s.region === rid));
+}
+
+// Conditions right now from the 72 h outlook in index.json.
+function nowFor(entry, t) {
+  const o = entry?.outlook;
+  const i = o ? Math.floor((t - o.start) / 3600) : -1;
+  if (!o || i < 0 || i >= o.wave_height.length) return null;
+  return {
+    h: o.wave_height[i],
+    rel: RELATION[o.wind[i]],
+    wind: o.wind_speed[i],
+    rest: o.wave_height.slice(i),
+    restWind: o.wind.slice(i),
+  };
+}
+
+const starBtn = (id, name) => {
+  const on = isStarred(id);
+  return `<button class="star${on ? ' on' : ''}" data-star="${esc(id)}" aria-pressed="${on}"
+    aria-label="${on ? 'Unstar' : 'Star'} ${esc(name)}">${on ? '★' : '☆'}</button>`;
+};
+
+function bindStars(root, onChange) {
+  root.querySelectorAll('[data-star]').forEach((b) => {
+    b.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const on = toggleStar(b.dataset.star);
+      b.classList.toggle('on', on);
+      b.textContent = on ? '★' : '☆';
+      b.setAttribute('aria-pressed', on);
+      b.setAttribute('aria-label', b.getAttribute('aria-label').replace(/^(Un)?[Ss]tar/, on ? 'Unstar' : 'Star'));
+      onChange?.();
+    };
+  });
+}
+
+function spotRow(s, cur, maxH) {
+  return `<li class="spot-item">${starBtn(s.id, s.name)}<a class="spot-row" href="#/spot/${esc(s.id)}">
+    <span class="spot-name">${esc(s.name)}${s.skill === 'expert_only' ? ' <span class="tag">experts</span>' : ''}</span>
+    <span class="spot-now"><b>${ft(cur?.h)}</b><small>ft</small></span>
+    <span class="chip ${relClass(cur?.rel)}">${cur?.rel ? `${esc(cur.rel)} ${whole(cur.wind)}` : 'no data'}</span>
+    ${sparkline(cur?.rest || [], cur?.restWind || '', maxH)}
+  </a></li>`;
+}
+
+const WIND_WEIGHT = { offshore: 1, cross: 0.8, onshore: 0.6 };
+
+// The starred spot worth driving to right now: wave height discounted for
+// wind (onshore counts for 60 %). Expert-only spots are skipped unless they
+// are all that is starred: Mavericks shouldn't win every day.
+function bestOf(list) {
+  const scored = list.filter((x) => x.cur?.h != null)
+    .map((x) => ({ ...x, score: x.cur.h * (WIND_WEIGHT[x.cur.rel] ?? 0.5) }));
+  const pool = scored.some((x) => x.spot.skill !== 'expert_only')
+    ? scored.filter((x) => x.spot.skill !== 'expert_only') : scored;
+  return pool.sort((a, b) => b.score - a.score)[0] || null;
+}
+
+// ---- Opener -----------------------------------------------------------------
+
+// Half wheel on the left edge: centre at (0, R), wedges from top to bottom.
+function wheelSvg(selected, counts) {
+  const R = 140;
+  const r = 58;
+  const pt = (rad, deg) => {
+    const a = (deg * Math.PI) / 180;
+    return `${(rad * Math.cos(a)).toFixed(1)} ${(R + rad * Math.sin(a)).toFixed(1)}`;
+  };
+  const step = 180 / ZONES.length;
+  const wedges = ZONES.map((z, k) => {
+    const a0 = -90 + k * step + 1;
+    const a1 = -90 + (k + 1) * step - 1;
+    const mid = (a0 + a1) / 2;
+    const [lx, ly] = pt((R + r) / 2, mid).split(' ').map(Number);
+    const n = counts[z.id] || 0;
+    return `<a href="#/zone/${z.id}" class="wedge${z.id === selected ? ' sel' : ''}${n ? '' : ' empty'}"
+        data-zone="${z.id}" aria-label="${esc(z.name)}, ${n} spots">
+      <path d="M${pt(R, a0)} A${R} ${R} 0 0 1 ${pt(R, a1)} L${pt(r, a1)} A${r} ${r} 0 0 0 ${pt(r, a0)} Z"></path>
+      <text x="${lx}" y="${ly}" text-anchor="middle" class="w-name">${esc(z.name)}</text>
+      <text x="${lx}" y="${ly + 15}" text-anchor="middle" class="w-count">${n} spots</text>
+    </a>`;
+  }).join('');
+  return `<svg class="wheel" viewBox="0 0 ${R} ${2 * R}" width="${R}" height="${2 * R}">${wedges}</svg>`;
+}
+
+async function renderOpener(fresh = false) {
   let core;
   try {
     core = await loadCore(fresh);
@@ -55,60 +168,168 @@ async function renderHome(fresh = false) {
     return;
   }
   const { index, spots, fromCache } = core;
+  // A zone opened from here starts at the top; only Back from a spot restores.
+  ZONES.forEach((z) => { try { sessionStorage.removeItem(`wf-scroll-${z.id}`); } catch { /* none */ } });
   const byId = Object.fromEntries(index.spots.map((s) => [s.id, s]));
   const t = now();
-  const maxH = Math.max(3, ...index.spots.flatMap((s) => s.outlook?.wave_height || [0]));
+  const counts = Object.fromEntries(ZONES.map((z) => [z.id, zoneSpots(z.id, spots).length]));
+  let selected = lastZone();
+  if (!counts[selected]) selected = ZONES.find((z) => counts[z.id])?.id || ZONES[0].id;
 
-  const regions = spots.regions.map((r) => {
-    const rows = spots.spots.filter((s) => s.region === r.id).map((s) => {
-      const o = byId[s.id]?.outlook;
-      const i = o ? Math.floor((t - o.start) / 3600) : -1;
-      const ok = o && i >= 0 && i < o.wave_height.length;
-      const h = ok ? o.wave_height[i] : null;
-      const rel = ok ? RELATION[o.wind[i]] : null;
-      const wind = ok ? o.wind_speed[i] : null;
-      const rest = ok ? o.wave_height.slice(i) : [];
-      const restWind = ok ? o.wind.slice(i) : '';
-      return `<li><a class="spot-row" href="#/spot/${esc(s.id)}">
-        <span class="spot-name">${esc(s.name)}${s.skill === 'expert_only' ? ' <span class="tag">experts</span>' : ''}</span>
-        <span class="spot-now"><b>${ft(h)}</b><small>ft</small></span>
-        <span class="chip ${relClass(rel)}">${rel ? `${esc(rel)} ${whole(wind)}` : 'no data'}</span>
-        ${sparkline(rest, restWind, maxH)}
-      </a></li>`;
-    }).join('');
+  const stars = starredSpots()
+    .map((id) => spots.spots.find((s) => s.id === id))
+    .filter(Boolean)
+    .map((spot) => ({ spot, cur: nowFor(byId[spot.id], t) }));
+  const best = bestOf(stars);
+  const starList = stars.length ? `<ul class="star-list">${stars.map(({ spot, cur }) => `<li>
+      <a class="star-row" href="#/spot/${esc(spot.id)}"><span class="star-name">${esc(spot.name)}</span>
+        <span class="dot ${relClass(cur?.rel)}" title="${esc(cur?.rel || 'no data')}"></span>
+        <b>${ft(cur?.h)}<small> ft</small></b></a></li>`).join('')}</ul>`
+    : '<p class="muted hint">Tap ☆ on any beach to star it. Starred beaches show up here and stay saved for offline.</p>';
+
+  $app.innerHTML = `<main class="screen opener">
+    <header class="opener-top">
+      <div><p class="eyebrow">California surf</p><h1>Wave Finder</h1></div>
+      <button class="icon-btn" id="refresh" aria-label="Refresh">⟳</button>
+    </header>
+    ${freshness(index.generated_at, fromCache)}
+    <div class="opener-body">
+      <nav class="wheel-wrap" aria-label="Regions">${wheelSvg(selected, counts)}</nav>
+      <section class="starred">
+        ${best ? `<a class="best" href="#/spot/${esc(best.spot.id)}">
+          <span class="eyebrow">Best of your stars now</span>
+          <span class="best-name">${esc(best.spot.name)}</span>
+          <span class="best-num">${ft(best.cur.h)}<small> ft</small>
+            <span class="chip ${relClass(best.cur.rel)}">${esc(best.cur.rel || '')} ${whole(best.cur.wind)}</span></span>
+        </a>` : ''}
+        <h2 class="eyebrow">Starred</h2>
+        ${starList}
+      </section>
+    </div>
+    <a class="btn primary go" id="go" href="#/zone/${selected}">Show ${esc(ZONES.find((z) => z.id === selected).name)} beaches</a>
+    ${best ? '<p class="fine">Best: wave height, discounted for cross and onshore wind; expert-only spots left out.</p>' : ''}
+    <svg class="waves" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
+      <path class="w1" d="M-20 50 C 60 30 120 70 200 48 S 330 30 420 50 L420 120 L-20 120 Z"></path>
+      <path class="w2" d="M-20 72 C 70 52 140 92 220 70 S 340 56 420 72 L420 120 L-20 120 Z"></path>
+      <path class="w3" d="M-20 94 C 80 78 160 108 240 92 S 350 84 420 94 L420 120 L-20 120 Z"></path>
+    </svg>
+  </main>`;
+
+  document.getElementById('refresh').onclick = () => { clearMemo(); renderOpener(true); };
+  const go = document.getElementById('go');
+  const pick = (id) => {
+    selected = id;
+    noteZone(id);
+    go.href = `#/zone/${id}`;
+    go.textContent = `Show ${ZONES.find((z) => z.id === id).name} beaches`;
+    $app.querySelectorAll('.wedge').forEach((w) => w.classList.toggle('sel', w.dataset.zone === id));
+  };
+  $app.querySelectorAll('.wedge').forEach((w) => {
+    w.onclick = (e) => {
+      e.preventDefault();
+      if (w.classList.contains('empty')) return;
+      pick(w.dataset.zone);
+      // Let the highlight land before switching screens.
+      setTimeout(() => { location.hash = `#/zone/${w.dataset.zone}`; }, 220);
+    };
+  });
+  // Swipe up or down on the wheel to spin the selection.
+  const wheel = $app.querySelector('.wheel-wrap');
+  let y0 = null;
+  wheel.addEventListener('touchstart', (e) => { y0 = e.touches[0].clientY; }, { passive: true });
+  wheel.addEventListener('touchend', (e) => {
+    if (y0 == null) return;
+    const dy = e.changedTouches[0].clientY - y0;
+    y0 = null;
+    if (Math.abs(dy) < 30) return;
+    const live = ZONES.filter((z) => counts[z.id]);
+    const k = live.findIndex((z) => z.id === selected);
+    const next = live[Math.min(Math.max(k + (dy < 0 ? 1 : -1), 0), live.length - 1)];
+    if (next) pick(next.id);
+  });
+  prefetch(index);
+}
+
+// ---- Zone list ----------------------------------------------------------------
+
+async function renderZone(zoneId, fresh = false) {
+  const zone = ZONES.find((z) => z.id === zoneId);
+  if (!zone) {
+    location.hash = '#/';
+    return;
+  }
+  let core;
+  try {
+    core = await loadCore(fresh);
+  } catch (err) {
+    errorScreen(err);
+    return;
+  }
+  const { index, spots, fromCache } = core;
+  noteZone(zoneId);
+  const byId = Object.fromEntries(index.spots.map((s) => [s.id, s]));
+  const t = now();
+  const regions = zoneRegions(zoneId, spots);
+  const list = zoneSpots(zoneId, spots);
+  const maxH = Math.max(3, ...list.flatMap((s) => byId[s.id]?.outlook?.wave_height || [0]));
+  const cur = Object.fromEntries(list.map((s) => [s.id, nowFor(byId[s.id], t)]));
+  const starred = list.filter((s) => isStarred(s.id));
+
+  const sections = regions.map((r) => {
+    const rows = list.filter((s) => s.region === r.id).map((s) => spotRow(s, cur[s.id], maxH)).join('');
     return `<section class="region" id="r-${esc(r.id)}">
       <h2>${esc(r.name)} <small>${esc(r.description || '')}</small></h2>
       <ul class="spot-list">${rows}</ul></section>`;
   }).join('');
 
   $app.innerHTML = `<main class="screen home">
-    <header class="top"><h1>Wave Finder</h1>
+    <header class="top"><a class="icon-btn" href="#/" aria-label="Back to regions">←</a><h1>${esc(zone.name)}</h1>
       <button class="icon-btn" id="refresh" aria-label="Refresh">⟳</button></header>
     ${freshness(index.generated_at, fromCache)}
-    <nav class="region-chips">${spots.regions.map((r) =>
-      `<a class="chip-link" href="#/" data-jump="r-${esc(r.id)}">${esc(r.name)}</a>`).join('')}</nav>
+    ${regions.length > 1 ? `<nav class="region-chips">${regions.map((r) =>
+      `<a class="chip-link" href="#/" data-jump="r-${esc(r.id)}">${esc(r.name)}</a>`).join('')}</nav>` : ''}
     <p class="legend"><span class="chip off">offshore</span><span class="chip cross">cross</span>
       <span class="chip on">onshore</span> wind mph · bars: next 72 h</p>
-    ${regions}
+    ${starred.length ? `<section class="region"><h2>★ Starred here</h2>
+      <ul class="spot-list">${starred.map((s) => spotRow(s, cur[s.id], maxH)).join('')}</ul></section>` : ''}
+    ${sections || '<p class="muted">No spots here yet.</p>'}
     <footer class="credits">Forecasts: Open-Meteo (CC BY 4.0). Tides: NOAA CO-OPS. Buoys: NOAA NDBC, Scripps CDIP.</footer>
   </main>`;
 
-  document.getElementById('refresh').onclick = () => { clearMemo(); renderHome(true); };
+  document.getElementById('refresh').onclick = () => { clearMemo(); renderZone(zoneId, true); };
   $app.querySelectorAll('[data-jump]').forEach((a) => {
     a.onclick = (e) => {
       e.preventDefault();
       document.getElementById(a.dataset.jump)?.scrollIntoView({ behavior: 'smooth' });
     };
   });
-  prefetchRecent(index);
+  // Re-render so the "Starred here" section and the twin star buttons agree.
+  bindStars($app, () => {
+    keepScroll(zoneId);
+    renderZone(zoneId).then(() => restoreScroll(zoneId));
+  });
+  $app.querySelectorAll('.spot-row').forEach((a) => { a.addEventListener('click', () => keepScroll(zoneId)); });
+  prefetch(index);
 }
 
-// Refresh the last few opened spots while the connection is good, so they work
-// offline at the beach.
-function prefetchRecent(index) {
+// Coming back from a spot lands where the list was left.
+function keepScroll(zoneId) {
+  try { sessionStorage.setItem(`wf-scroll-${zoneId}`, String(window.scrollY)); } catch { /* none */ }
+}
+
+function restoreScroll(zoneId) {
+  let y = 0;
+  try { y = Number(sessionStorage.getItem(`wf-scroll-${zoneId}`)) || 0; } catch { /* none */ }
+  window.scrollTo(0, y);
+}
+
+// Refresh starred spots and the last few opened while the connection is good,
+// so they work offline at the beach.
+function prefetch(index) {
   if (!goodConnection()) return;
   const byId = Object.fromEntries(index.spots.map((s) => [s.id, s]));
-  for (const id of recentSpots().slice(0, 3)) {
+  const ids = [...new Set([...starredSpots(), ...recentSpots().slice(0, 3)])];
+  for (const id of ids) {
     const s = byId[id];
     if (!s) continue;
     getJSON(s.forecast).catch(() => {});
@@ -134,8 +355,9 @@ async function renderSpot(id) {
     return;
   }
   noteRecent(id);
+  const back = `#/zone/${zoneOf(spot.region, core.spots)}`;
   $app.innerHTML = `<main class="screen spot"><header class="top">
-    <a class="icon-btn" href="#/" aria-label="Back">←</a><h1>${esc(spot.name)}</h1></header>
+    <a class="icon-btn" href="${back}" aria-label="Back">←</a><h1>${esc(spot.name)}</h1></header>
     <p class="updated">Loading forecast…</p></main>`;
 
   const opt = (p) => (p ? getJSON(p).then((r) => r.data).catch(() => null) : Promise.resolve(null));
@@ -174,6 +396,12 @@ class SpotView {
 
   mount(fromCache) {
     const { spot, fc } = this;
+    const zone = zoneOf(spot.region, this.core.spots);
+    const order = zoneSpots(zone, this.core.spots);
+    const k = order.findIndex((s) => s.id === spot.id);
+    const prev = order[k - 1];
+    const next = order[k + 1];
+    this.neighbours = { prev, next };
     const t = now();
     const nights = [];
     for (let k = 0; k < this.days.length; k++) {
@@ -187,9 +415,22 @@ class SpotView {
     const todayKey = localDayKey(t);
 
     $app.innerHTML = `<main class="screen spot">
-      <header class="top"><a class="icon-btn" href="#/" aria-label="Back">←</a>
-        <h1>${esc(spot.name)}</h1></header>
+      <header class="top"><a class="icon-btn" href="#/zone/${zone}" aria-label="Back">←</a>
+        <h1>${esc(spot.name)}</h1>${starBtn(spot.id, spot.name)}</header>
       ${freshness(fc.marine_updated || this.core.index.generated_at, fromCache)}
+      <details class="card notes" id="about"${aboutOpen() ? ' open' : ''}>
+        <summary><h3>About this spot</h3></summary>
+        <p>${esc(spot.notes || '')}</p>
+        ${spot.skill === 'expert_only' || spot.bodyboard ? `<p class="tags">${
+          spot.skill === 'expert_only' ? '<span class="tag">experts only</span>' : ''}${
+          spot.bodyboard ? '<span class="tag bb">good for bodyboarding</span>' : ''}</p>` : ''}
+        <dl class="facts">
+          <div><dt>Faces</dt><dd>${compass(spot.facing_deg)} (${spot.facing_deg}°)</dd></div>
+          <div><dt>Swell window</dt><dd>${compass(spot.swell_window.from)} to ${compass(spot.swell_window.to)}</dd></div>
+          <div><dt>Break</dt><dd class="cap">${esc(spot.break_type || '–')}</dd></div>
+          <div><dt>Best tide</dt><dd class="cap">${esc((spot.tide_preference || '–').replace(/_/g, ' '))}</dd></div>
+        </dl>
+      </details>
       <section class="hero" aria-live="polite">
         <div class="hero-num"><span id="hero-h">–</span><small>ft</small></div>
         <div class="hero-sub"><span id="hero-when"></span><span id="hero-wx"></span></div>
@@ -222,19 +463,16 @@ class SpotView {
         </div>
         <article class="card" id="c-sun"></article>
         <article class="card" id="c-buoy">${this.buoyCard()}</article>
-        <article class="card notes">
-          <h3>About this spot</h3>
-          <p>${esc(spot.notes || '')}</p>
-          <dl class="facts">
-            <div><dt>Faces</dt><dd>${compass(spot.facing_deg)} (${spot.facing_deg}°)</dd></div>
-            <div><dt>Swell window</dt><dd>${compass(spot.swell_window.from)} to ${compass(spot.swell_window.to)}</dd></div>
-            <div><dt>Break</dt><dd class="cap">${esc(spot.break_type || '–')}</dd></div>
-            <div><dt>Best tide</dt><dd class="cap">${esc(spot.tide_preference || '–')}</dd></div>
-          </dl>
-        </article>
       </section>
+      ${prev || next ? `<nav class="neighbours">
+        ${prev ? `<a class="btn" href="#/spot/${esc(prev.id)}">← ${esc(prev.name)}</a>` : '<span></span>'}
+        ${next ? `<a class="btn" href="#/spot/${esc(next.id)}">${esc(next.name)} →</a>` : ''}
+      </nav>` : ''}
     </main>`;
 
+    bindStars($app);
+    document.getElementById('about').addEventListener('toggle', (e) => noteAboutOpen(e.target.open));
+    this.bindSwipe();
     this.strip = document.getElementById('strip');
     this.bindScrubber();
     this.select(hourIndex(fc.time, t), false);
@@ -275,6 +513,27 @@ class SpotView {
         // Jump to the hour containing first light: dawn patrol by default.
         this.select(hourIndex(this.fc.time, d.firstLight ?? d.date + 6 * 3600), true);
       };
+    });
+  }
+
+  // Swipe sideways (outside the scrubber) for the next or previous spot in the
+  // zone. Replaces the history entry so Back still returns to the list.
+  bindSwipe() {
+    const main = $app.querySelector('main');
+    let start = null;
+    main.addEventListener('touchstart', (e) => {
+      start = e.target.closest('.scrubber') ? null
+        : { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
+    }, { passive: true });
+    main.addEventListener('touchend', (e) => {
+      if (!start) return;
+      const dx = e.changedTouches[0].clientX - start.x;
+      const dy = e.changedTouches[0].clientY - start.y;
+      const quick = Date.now() - start.t < 600;
+      start = null;
+      if (!quick || Math.abs(dx) < 80 || Math.abs(dy) > Math.abs(dx) / 2) return;
+      const to = dx < 0 ? this.neighbours.next : this.neighbours.prev;
+      if (to) location.replace(`#/spot/${to.id}`);
     });
   }
 
@@ -330,7 +589,9 @@ class SpotView {
           <p class="rel ${relClass(rel)}">${esc(rel || 'unknown')}</p>
           <p class="big">${whole(w.wind_speed_10m[i])} <small>mph</small></p>
           <p class="muted">gusts ${whole(w.wind_gusts_10m[i])} mph<br>from ${compass(w.wind_direction_10m[i])}</p>
-        </div></div>`;
+        </div></div>
+      ${spot.big_wave && m.wave_height[i] >= spot.big_wave.min_ft ? `<div class="big-wave">
+        <b>Big-wave note</b><p>${esc(spot.big_wave.note)}</p></div>` : ''}`;
 
     // Tide
     const tideEl = document.getElementById('c-tide');
@@ -406,9 +667,12 @@ class SpotView {
 // ---- Router ---------------------------------------------------------------
 
 function route() {
-  const m = location.hash.match(/^#\/spot\/([\w-]+)/);
+  const spot = location.hash.match(/^#\/spot\/([\w-]+)/);
+  const zone = location.hash.match(/^#\/zone\/([\w-]+)/);
   window.scrollTo(0, 0);
-  if (m) renderSpot(m[1]); else renderHome();
+  if (spot) renderSpot(spot[1]);
+  else if (zone) renderZone(zone[1]).then(() => restoreScroll(zone[1]));
+  else renderOpener();
 }
 
 window.addEventListener('hashchange', route);

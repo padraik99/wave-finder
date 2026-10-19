@@ -22,7 +22,7 @@ Phase 0 (scope) and Phase 1 (data pipeline) done. Phase 2 (installable app shell
 
 | Piece | Where |
 |---|---|
-| Spot database (25 CA spots, buoy + tide registries) | `spots.json` |
+| Spot database (32 CA spots, buoy + tide registries) | `spots.json` |
 | Fetchers, staleness check, live verifier | `pipeline/` |
 | Tests (offline, canned API responses) | `tests/` |
 | Workflows | `.github/workflows/` |
@@ -61,10 +61,14 @@ data branch
 Plain HTML/CSS/JS in `app/`, no build step. GitHub Pages serves it at
 `https://padraik99.github.io/wave-finder/` with the data at `./data/` on the same site.
 
-- **Region list**: every spot with the current wave height, wind label and a 72 h bar strip, all from `index.json` (about 5 KB compressed).
-- **Spot detail**: hour scrubber (drag the strip, tap a day to jump to first light, or step ±1 h / ±3 h). For the chosen hour: swell trains with an in-window/blocked flag, wind as an arrow against the beach, tide height and direction, water and air temperature, first light / sunrise / sunset / last light. Live buoy panel compares the latest reading with the forecast made for the buoy's own position at that hour (wave height, period, direction, water temperature), so the gap shows how the model is doing, not how sheltered the spot is.
-- **Offline**: a service worker caches the app and every data file you open. Data is network-first with an 8 s timeout, then the saved copy, with an "Offline" banner. The last 3 spots you opened are refreshed in the background while the connection is good.
+- **Opener**: a half wheel (NorCal · Central · SoCal) to pick a zone, your starred beaches with their current height, and the best of them right now (wave height discounted for cross and onshore wind; expert-only spots left out). The wheel remembers the last zone.
+- **Zone list**: that zone's spots with the current wave height, wind label and a 72 h bar strip, all from `index.json` (about 5 KB compressed). Starred spots repeat at the top. Back from a spot returns here at the same scroll position.
+- **Stars**: tap ☆ on a list row or a spot's header. Stars live on the phone (localStorage).
+- **Spot detail**: "About this spot" first (collapsible, remembered), then the hour scrubber (drag the strip, tap a day to jump to first light, or step ±1 h / ±3 h). For the chosen hour: swell trains with an in-window/blocked flag, wind as an arrow against the beach, tide height and direction, water and air temperature, first light / sunrise / sunset / last light. Live buoy panel compares the latest reading with the forecast made for the buoy's own position at that hour (wave height, period, direction, water temperature), so the gap shows how the model is doing, not how sheltered the spot is.
+- **Offline**: a service worker caches the app and every data file you open. Data is network-first with an 8 s timeout, then the saved copy, with an "Offline" banner. Starred spots and the last 3 you opened are refreshed in the background while the connection is good.
 - **Per refresh**: the region list costs about 5 KB; opening a spot costs about 25 to 35 KB (forecast, tide, buoy). Unchanged files come back as 304s.
+- Swipe sideways (outside the scrubber), or use the buttons at the bottom, for the next or previous spot in the zone.
+- A spot can carry a `big_wave` note in `spots.json` (Mavericks does), shown in the wind card when the forecast is at or above its `min_ft`.
 - First and last light are computed on the phone (`app/js/sun.js`); its sunrise/sunset agree with Open-Meteo's to within 2 minutes.
 
 ### One-time setup for the app
