@@ -136,8 +136,8 @@ function bestOf(list) {
 
 // Half wheel on the left edge: centre at (0, R), wedges from top to bottom.
 function wheelSvg(selected, counts) {
-  const R = 140;
-  const r = 58;
+  const R = 175;
+  const r = 70;
   const pt = (rad, deg) => {
     const a = (deg * Math.PI) / 180;
     return `${(rad * Math.cos(a)).toFixed(1)} ${(R + rad * Math.sin(a)).toFixed(1)}`;
@@ -153,10 +153,31 @@ function wheelSvg(selected, counts) {
         data-zone="${z.id}" aria-label="${esc(z.name)}, ${n} spots">
       <path d="M${pt(R, a0)} A${R} ${R} 0 0 1 ${pt(R, a1)} L${pt(r, a1)} A${r} ${r} 0 0 0 ${pt(r, a0)} Z"></path>
       <text x="${lx}" y="${ly}" text-anchor="middle" class="w-name">${esc(z.name)}</text>
-      <text x="${lx}" y="${ly + 15}" text-anchor="middle" class="w-count">${n} spots</text>
+      <text x="${lx}" y="${ly + 17}" text-anchor="middle" class="w-count">${n} spots</text>
     </a>`;
   }).join('');
   return `<svg class="wheel" viewBox="0 0 ${R} ${2 * R}" width="${R}" height="${2 * R}">${wedges}</svg>`;
+}
+
+// First sentence of a spot's notes: its one-line "what's special here".
+const feature = (notes) => (notes || '').split(/(?<=\.)\s/)[0];
+
+function starCards(zone, stars) {
+  const here = stars.filter((x) => zoneOf(x.spot.region, x.spots) === zone.id);
+  if (!here.length) {
+    return `<p class="muted hint">No starred beaches in ${esc(zone.name)} yet. Open the list and tap ☆ to add some.</p>`;
+  }
+  const best = bestOf(here);
+  return `${best && here.length > 1 ? `<p class="best-line">Best right now: <b>${esc(best.spot.name)}</b>
+      <small>(height, discounted for cross and onshore wind${best.spot.skill === 'expert_only' ? '' : '; expert-only left out'})</small></p>` : ''}
+    <ul class="star-cards">${here.map(({ spot, cur }) => `<li><a class="star-card${best && here.length > 1 && best.spot.id === spot.id ? ' top' : ''}" href="#/spot/${esc(spot.id)}">
+      <span class="sc-head"><span class="star-name">${esc(spot.name)}</span>
+        <b class="sc-num">${ft(cur?.h)}<small> ft</small></b></span>
+      <span class="sc-wind"><span class="chip ${relClass(cur?.rel)}">${cur?.rel ? `${esc(cur.rel)} ${whole(cur.wind)}` : 'no data'}</span>
+        ${spot.skill === 'expert_only' ? '<span class="tag">experts only</span>' : ''}
+        ${spot.bodyboard ? '<span class="tag bb">good for bodyboarding</span>' : ''}</span>
+      <span class="sc-feature">${esc(feature(spot.notes))}</span>
+    </a></li>`).join('')}</ul>`;
 }
 
 async function renderOpener(fresh = false) {
@@ -175,17 +196,12 @@ async function renderOpener(fresh = false) {
   const counts = Object.fromEntries(ZONES.map((z) => [z.id, zoneSpots(z.id, spots).length]));
   let selected = lastZone();
   if (!counts[selected]) selected = ZONES.find((z) => counts[z.id])?.id || ZONES[0].id;
+  const zoneById = (id) => ZONES.find((z) => z.id === id);
 
   const stars = starredSpots()
     .map((id) => spots.spots.find((s) => s.id === id))
     .filter(Boolean)
-    .map((spot) => ({ spot, cur: nowFor(byId[spot.id], t) }));
-  const best = bestOf(stars);
-  const starList = stars.length ? `<ul class="star-list">${stars.map(({ spot, cur }) => `<li>
-      <a class="star-row" href="#/spot/${esc(spot.id)}"><span class="star-name">${esc(spot.name)}</span>
-        <span class="dot ${relClass(cur?.rel)}" title="${esc(cur?.rel || 'no data')}"></span>
-        <b>${ft(cur?.h)}<small> ft</small></b></a></li>`).join('')}</ul>`
-    : '<p class="muted hint">Tap ☆ on any beach to star it. Starred beaches show up here and stay saved for offline.</p>';
+    .map((spot) => ({ spot, spots, cur: nowFor(byId[spot.id], t) }));
 
   $app.innerHTML = `<main class="screen opener">
     <header class="opener-top">
@@ -195,19 +211,18 @@ async function renderOpener(fresh = false) {
     ${freshness(index.generated_at, fromCache)}
     <div class="opener-body">
       <nav class="wheel-wrap" aria-label="Regions">${wheelSvg(selected, counts)}</nav>
-      <section class="starred">
-        ${best ? `<a class="best" href="#/spot/${esc(best.spot.id)}">
-          <span class="eyebrow">Best of your stars now</span>
-          <span class="best-name">${esc(best.spot.name)}</span>
-          <span class="best-num">${ft(best.cur.h)}<small> ft</small>
-            <span class="chip ${relClass(best.cur.rel)}">${esc(best.cur.rel || '')} ${whole(best.cur.wind)}</span></span>
-        </a>` : ''}
-        <h2 class="eyebrow">Starred</h2>
-        ${starList}
-      </section>
+      <div class="zone-pick">
+        <p class="eyebrow">Region</p>
+        <p class="zone-name" id="zone-name">${esc(zoneById(selected).name)}</p>
+        <p class="muted" id="zone-desc"></p>
+        <a class="btn primary go" id="go" href="#/zone/${selected}">Show beaches</a>
+        <p class="fine">Tap or swipe the wheel to switch.</p>
+      </div>
     </div>
-    <a class="btn primary go" id="go" href="#/zone/${selected}">Show ${esc(ZONES.find((z) => z.id === selected).name)} beaches</a>
-    ${best ? '<p class="fine">Best: wave height, discounted for cross and onshore wind; expert-only spots left out.</p>' : ''}
+    <section class="starred" aria-live="polite">
+      <h2 class="eyebrow" id="star-head"></h2>
+      <div id="zone-stars"></div>
+    </section>
     <svg class="waves" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
       <path class="w1" d="M-20 50 C 60 30 120 70 200 48 S 330 30 420 50 L420 120 L-20 120 Z"></path>
       <path class="w2" d="M-20 72 C 70 52 140 92 220 70 S 340 56 420 72 L420 120 L-20 120 Z"></path>
@@ -216,21 +231,29 @@ async function renderOpener(fresh = false) {
   </main>`;
 
   document.getElementById('refresh').onclick = () => { clearMemo(); renderOpener(true); };
-  const go = document.getElementById('go');
   const pick = (id) => {
     selected = id;
     noteZone(id);
-    go.href = `#/zone/${id}`;
-    go.textContent = `Show ${ZONES.find((z) => z.id === id).name} beaches`;
+    const zone = zoneById(id);
+    document.getElementById('go').href = `#/zone/${id}`;
+    document.getElementById('zone-name').textContent = zone.name;
+    document.getElementById('zone-desc').textContent = zoneRegions(id, spots).map((r) => r.name).join(' · ');
+    document.getElementById('star-head').textContent = `Starred in ${zone.name}`;
+    document.getElementById('zone-stars').innerHTML = starCards(zone, stars);
     $app.querySelectorAll('.wedge').forEach((w) => w.classList.toggle('sel', w.dataset.zone === id));
   };
+  pick(selected);
+  // First tap highlights a zone and shows its stars; tapping it again opens it.
   $app.querySelectorAll('.wedge').forEach((w) => {
     w.onclick = (e) => {
-      e.preventDefault();
-      if (w.classList.contains('empty')) return;
-      pick(w.dataset.zone);
-      // Let the highlight land before switching screens.
-      setTimeout(() => { location.hash = `#/zone/${w.dataset.zone}`; }, 220);
+      if (w.classList.contains('empty')) {
+        e.preventDefault();
+        return;
+      }
+      if (w.dataset.zone !== selected) {
+        e.preventDefault();
+        pick(w.dataset.zone);
+      }
     };
   });
   // Swipe up or down on the wheel to spin the selection.
