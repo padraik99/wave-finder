@@ -241,7 +241,8 @@
         "fallback": "46012"
       },
       "tide_station": "9414131",
-      "notes": "Pedro Point shelters it from NW wind; reliable beginner beach break."
+      "notes": "Pedro Point shelters it from NW wind; reliable beginner beach break. Friendly for bodyboarding too.",
+      "bodyboard": true
     },
     {
       "id": "montara",
@@ -306,7 +307,8 @@
         "fallback": "46214"
       },
       "tide_station": "9414131",
-      "notes": "Small, sheltered beach break east of the harbor breakwater."
+      "notes": "Small, sheltered beach break east of the harbor breakwater. Gentle enough for easy bodyboarding when there's swell.",
+      "bodyboard": true
     },
     {
       "id": "half_moon_bay_state_beach",
@@ -486,7 +488,8 @@
         "fallback": "46028"
       },
       "tide_station": "9412110",
-      "notes": "SW-facing beach by the pier; sheltered from NW wind."
+      "notes": "SW-facing beach by the pier; sheltered from NW wind. Gentle peaks either side of the pier suit bodyboarding.",
+      "bodyboard": true
     },
     {
       "id": "hazard_canyon",
@@ -526,7 +529,8 @@
         "fallback": "46028"
       },
       "tide_station": "9412110",
-      "notes": "Beach break north of the rock; consistent."
+      "notes": "Beach break north of the rock; consistent. Sandbars shift day to day; when they line up, the wedgy peaks near the rock are fun on a bodyboard.",
+      "bodyboard": true
     },
     {
       "id": "pismo_pier",
@@ -546,7 +550,8 @@
         "fallback": "46011"
       },
       "tide_station": "9412110",
-      "notes": "Sheltered from NW by Point San Luis; small most of the year."
+      "notes": "Sheltered from NW by Point San Luis; small most of the year. The south side of the pier is usually mellower and less crowded; good bodyboarding on small to mid days.",
+      "bodyboard": true
     },
     {
       "id": "surf_beach_lompoc",
