@@ -371,6 +371,36 @@ small { font-size: 0.75em; }
 .tag.bb { color: var(--accent); }
 .spot .notes { margin-top: 4px; }
 
+.mode { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; gap: 2px; }
+.mode-btn { min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; color: var(--muted); font: inherit; font-size: 0.85rem; font-weight: 600; cursor: pointer; }
+.mode-btn.on { background: var(--accent); color: #04121d; }
+.star-top, .when-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.when-top h3 { margin: 0; }
+.windows { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
+.window {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: "when label" "what label";
+  gap: 2px 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.w-when { grid-area: when; font-weight: 700; }
+.w-what { grid-area: what; color: var(--muted); font-size: 0.85rem; }
+.w-label { grid-area: label; font-size: 0.8rem; font-weight: 700; padding: 3px 10px; border-radius: 999px; }
+.window.good .w-label { color: var(--off); background: color-mix(in srgb, var(--off) 16%, transparent); }
+.window.fair .w-label { color: var(--cross); background: color-mix(in srgb, var(--cross) 16%, transparent); }
+.window.poor .w-label { color: var(--muted); background: var(--surface); }
+.suit { font-size: 0.85rem; }
+
 .big-wave { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--cross); border-radius: 12px; }
 .big-wave b { color: var(--cross); font-size: 0.85rem; }
 .big-wave p { margin: 4px 0 0; font-size: 0.9rem; }

@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  buoyVsForecast, compass, fmtAge, hourIndex, inWindow, nearestIndex, swellTrains, tideAt,
+  buoyVsForecast, compass, fmtAge, hourIndex, hourScore, inWindow, nearestIndex, sizeScore, swellTrains,
+  tideAt, tideClass, tideSuits, wetsuitFor, whenToGo, windScore,
 } from '../../app/js/model.js';
 
 test('compass points', () => {
@@ -97,4 +98,71 @@ test('fmtAge', () => {
   assert.equal(fmtAge(25 * 60), '25 min ago');
   assert.equal(fmtAge(3 * 3600), '3 h ago');
   assert.equal(fmtAge(5400), '1.5 h ago');
+});
+
+test('size score suits the mode', () => {
+  assert.equal(sizeScore(4, 'bb'), 1);
+  assert.ok(sizeScore(9, 'bb') < sizeScore(4, 'bb'));
+  assert.ok(sizeScore(9, 'surf') > sizeScore(4, 'surf'));
+  assert.ok(sizeScore(20, 'surf') < sizeScore(8, 'surf'));
+  assert.ok(sizeScore(20, 'surf', true) > sizeScore(8, 'surf', true)); // big-wave spot
+  assert.equal(sizeScore(null), 0);
+});
+
+test('wind score: light wind forgives direction, strong onshore does not', () => {
+  assert.equal(windScore('offshore', 10), 1);
+  assert.equal(windScore('onshore', 3), 0.95);
+  assert.equal(windScore('onshore', 20), 0.25);
+  assert.ok(windScore('cross', 10) > windScore('onshore', 10));
+  assert.ok(hourScore({ h: 4, rel: 'offshore', mph: 8, tideOk: false }) < hourScore({ h: 4, rel: 'offshore', mph: 8 }));
+});
+
+// One local day (Oct 20 2026, PDT) of hourly tide: low at 06:00, high at 18:00.
+const DAY0 = Date.UTC(2026, 9, 20, 7) / 1000; // local midnight
+const tideDay = {
+  hourly: {
+    time: Array.from({ length: 24 }, (_, k) => DAY0 + k * 3600),
+    height: Array.from({ length: 24 }, (_, k) => 3 + 2 * Math.cos(((k - 18) / 24) * 2 * Math.PI)),
+    rising: Array.from({ length: 24 }, (_, k) => k >= 6 && k < 18),
+  },
+  extremes: [],
+};
+
+test('tide class follows the day range', () => {
+  assert.equal(tideClass(tideDay, DAY0 + 6 * 3600), 'low');
+  assert.equal(tideClass(tideDay, DAY0 + 12 * 3600), 'mid');
+  assert.equal(tideClass(tideDay, DAY0 + 18 * 3600), 'high');
+  assert.equal(tideSuits('low_to_mid', 'mid'), true);
+  assert.equal(tideSuits('mid', 'high'), false);
+  assert.equal(tideSuits('mid', null), null);
+});
+
+test('whenToGo finds the clean daylight window', () => {
+  const n = 24;
+  const time = Array.from({ length: n }, (_, k) => DAY0 + k * 3600);
+  // Offshore 07-10, onshore and blown out after; dark before 7 and after 18.
+  const rel = time.map((_, k) => (k >= 7 && k <= 10 ? 'offshore' : 'onshore'));
+  const fcDay = {
+    time,
+    marine: { wave_height: time.map(() => 4) },
+    weather: { wind_speed_10m: time.map((_, k) => (k <= 10 ? 6 : 18)) },
+    derived: { wind_relation: rel },
+  };
+  const spot = { tide_preference: 'any' };
+  const isDaylight = (t) => t >= DAY0 + 7 * 3600 && t < DAY0 + 18 * 3600;
+  const w = whenToGo({ fc: fcDay, tide: tideDay, spot, mode: 'bb', from: DAY0, isDaylight });
+  assert.equal(w.length, 1);
+  assert.equal(w[0].start, DAY0 + 7 * 3600);
+  assert.equal(w[0].end, DAY0 + 11 * 3600);
+  assert.equal(w[0].label, 'Good');
+  // Nothing worth it: tiny and onshore all day.
+  fcDay.marine.wave_height = time.map(() => 0.5);
+  assert.deepEqual(whenToGo({ fc: fcDay, tide: tideDay, spot, from: DAY0, isDaylight }), []);
+});
+
+test('wetsuit rule of thumb', () => {
+  assert.equal(wetsuitFor(50), '5/4 with hood and booties');
+  assert.equal(wetsuitFor(58), '4/3');
+  assert.equal(wetsuitFor(62), '3/2');
+  assert.equal(wetsuitFor(null), null);
 });

@@ -167,3 +167,115 @@ export function fmtAge(seconds) {
 
 export const ft = (v) => (v == null ? '–' : v.toFixed(1));
 export const whole = (v) => (v == null ? '–' : String(Math.round(v)));
+
+// ---- Scoring: how good is an hour, and when to go --------------------------
+// A rough 0..1 rating, not a forecast of its own: size suited to the mode,
+// discounted for wind and for a tide the spot doesn't like.
+
+// mode 'surf' or 'bb' (bodyboard). Bodyboarding peaks at punchy 2.5-5 ft and
+// falls off once it gets big; surf keeps rising to about 6 ft and only falls
+// off past 10 ft, unless the spot is a big-wave spot (expert).
+export function sizeScore(h, mode = 'surf', expert = false) {
+  if (h == null) return 0;
+  if (expert) return Math.min(Math.max(h / 18, 0), 1);
+  if (mode === 'bb') {
+    if (h < 1) return 0.1;
+    if (h < 2.5) return 0.3 + ((h - 1) / 1.5) * 0.7;
+    if (h <= 5) return 1;
+    if (h <= 8) return 1 - ((h - 5) / 3) * 0.6;
+    return 0.2;
+  }
+  if (h < 1) return 0.05;
+  if (h <= 6) return h / 6;
+  if (h <= 10) return 1;
+  return Math.max(0.3, 1 - (h - 10) / 8);
+}
+
+const WIND_FACTOR = { offshore: 1, cross: 0.75, onshore: 0.45 };
+
+// Light wind barely matters whatever its direction; strong onshore wrecks it.
+export function windScore(rel, mph) {
+  let f = WIND_FACTOR[rel] ?? 0.5;
+  if (mph != null && mph < 5) f = Math.max(f, 0.95);
+  if (rel === 'onshore' && mph != null && mph > 15) f = 0.25;
+  return f;
+}
+
+// low / mid / high: where the height sits within that local day's range.
+export function tideClass(tide, t) {
+  const now = tideAt(tide, t);
+  if (!now || now.height == null) return null;
+  const key = localDayKey(t);
+  const { time, height } = tide.hourly;
+  const day = height.filter((v, k) => v != null && localDayKey(time[k]) === key);
+  const lo = Math.min(...day);
+  const hi = Math.max(...day);
+  if (!(hi > lo)) return 'mid';
+  const f = (now.height - lo) / (hi - lo);
+  return f < 1 / 3 ? 'low' : f > 2 / 3 ? 'high' : 'mid';
+}
+
+const TIDE_OK = {
+  low: ['low'], low_to_mid: ['low', 'mid'], mid: ['mid'], mid_to_high: ['mid', 'high'],
+  high: ['high'], any: ['low', 'mid', 'high'],
+};
+
+export const tideSuits = (pref, cls) => (cls == null || !TIDE_OK[pref] ? null : TIDE_OK[pref].includes(cls));
+
+export function hourScore({ h, rel, mph, tideOk = null, mode = 'surf', expert = false }) {
+  return sizeScore(h, mode, expert) * windScore(rel, mph) * (tideOk === false ? 0.8 : 1);
+}
+
+export const scoreLabel = (s) => (s >= 0.75 ? 'Good' : s >= 0.55 ? 'Fair' : 'Poor');
+
+// The best few daylight windows in the next `hours`: runs of consecutive
+// hours scoring within 85 % of their own peak, best peak first. isDaylight(t)
+// says whether an hour counts (first light to last light).
+export function whenToGo({ fc, tide, spot, mode = 'surf', from, hours = 72, isDaylight, max = 3 }) {
+  const expert = spot.skill === 'expert_only';
+  const start = Math.max(hourIndex(fc.time, from), 0);
+  const scored = [];
+  for (let i = start; i < fc.time.length && fc.time[i] < from + hours * HOUR; i++) {
+    const t = fc.time[i];
+    if (!isDaylight(t)) {
+      scored.push(null);
+      continue;
+    }
+    const cls = tide ? tideClass(tide, t) : null;
+    scored.push({
+      i, t, cls,
+      h: fc.marine.wave_height[i],
+      rel: fc.derived.wind_relation[i],
+      mph: fc.weather.wind_speed_10m[i],
+      score: hourScore({
+        h: fc.marine.wave_height[i], rel: fc.derived.wind_relation[i], mph: fc.weather.wind_speed_10m[i],
+        tideOk: tideSuits(spot.tide_preference, cls), mode, expert,
+      }),
+    });
+  }
+  // Split into runs: a run ends at night or where the score drops away.
+  const runs = [];
+  let run = [];
+  const close = () => { if (run.length) runs.push(run); run = []; };
+  for (const x of scored) {
+    if (!x || x.score < 0.4) { close(); continue; }
+    if (run.length && x.score < 0.85 * Math.max(...run.map((r) => r.score))) close();
+    run.push(x);
+  }
+  close();
+  return runs.map((r) => {
+    const peak = r.reduce((a, b) => (b.score > a.score ? b : a));
+    return { start: r[0].t, end: r[r.length - 1].t + HOUR, peak, score: peak.score, label: scoreLabel(peak.score) };
+  }).sort((a, b) => b.score - a.score).slice(0, max).sort((a, b) => a.start - b.start);
+}
+
+// Rule-of-thumb wetsuit for a water temperature in °F (California norms).
+export function wetsuitFor(f) {
+  if (f == null) return null;
+  if (f < 52) return '5/4 with hood and booties';
+  if (f < 56) return '4/3 with booties';
+  if (f < 60) return '4/3';
+  if (f < 66) return '3/2';
+  if (f < 72) return 'springsuit or 2 mm';
+  return 'trunks or a rash guard';
+}
