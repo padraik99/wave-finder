@@ -70,6 +70,8 @@ export function toggleStar(id) {
 
 export const lastZone = () => load('wf-zone', null);
 export const noteZone = (id) => save('wf-zone', id);
+export const rideMode = () => (load('wf-mode', 'surf') === 'bb' ? 'bb' : 'surf');
+export const noteMode = (m) => save('wf-mode', m);
 export const aboutOpen = () => load('wf-about-open', true);
 export const noteAboutOpen = (open) => save('wf-about-open', open);
 

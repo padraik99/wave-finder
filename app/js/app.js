@@ -5,11 +5,11 @@
 
 import {
   aboutOpen, clearMemo, getJSON, goodConnection, isStarred, lastZone, noteAboutOpen, noteRecent,
-  noteZone, recentSpots, starredSpots, toggleStar,
+  noteMode, noteZone, recentSpots, rideMode, starredSpots, toggleStar,
 } from './data.js';
 import {
   RELATION, buoyVsForecast, compass, distanceMi, fmtAge, fmtDate, fmtHour, fmtTime, fmtWeekday,
-  ft, hourIndex, localDayKey, swellTrains, tideAt, weatherLabel, whole,
+  ft, hourIndex, hourScore, localDayKey, swellTrains, tideAt, weatherLabel, wetsuitFor, whenToGo, whole,
 } from './model.js';
 import { sunTimes } from './sun.js';
 import { dirArrow, relClass, scrubberStrip, sparkline, tideCurve, windDiagram } from './svg.js';
@@ -112,24 +112,47 @@ function bindStars(root, onChange) {
 
 function spotRow(s, cur, maxH) {
   return `<li class="spot-item">${starBtn(s.id, s.name)}<a class="spot-row" href="#/spot/${esc(s.id)}">
-    <span class="spot-name">${esc(s.name)}${s.skill === 'expert_only' ? ' <span class="tag">experts</span>' : ''}</span>
+    <span class="spot-name">${esc(s.name)}${s.skill === 'expert_only' ? ' <span class="tag">experts</span>' : ''}${
+      s.bodyboard ? ' <span class="tag bb">bodyboard</span>' : ''}</span>
     <span class="spot-now"><b>${ft(cur?.h)}</b><small>ft</small></span>
     <span class="chip ${relClass(cur?.rel)}">${cur?.rel ? `${esc(cur.rel)} ${whole(cur.wind)}` : 'no data'}</span>
     ${sparkline(cur?.rest || [], cur?.restWind || '', maxH)}
   </a></li>`;
 }
 
-const WIND_WEIGHT = { offshore: 1, cross: 0.8, onshore: 0.6 };
-
-// The starred spot worth driving to right now: wave height discounted for
-// wind (onshore counts for 60 %). Expert-only spots are skipped unless they
-// are all that is starred: Mavericks shouldn't win every day.
-function bestOf(list) {
-  const scored = list.filter((x) => x.cur?.h != null)
-    .map((x) => ({ ...x, score: x.cur.h * (WIND_WEIGHT[x.cur.rel] ?? 0.5) }));
+// The starred spot worth going to right now, by hourScore for the chosen
+// mode (surf or bodyboard; spots tagged for bodyboarding get a nudge in that
+// mode). Expert-only spots are skipped unless they are all that is starred:
+// Mavericks shouldn't win every day.
+function bestOf(list, mode) {
+  const scored = list.filter((x) => x.cur?.h != null).map((x) => ({
+    ...x,
+    score: hourScore({ h: x.cur.h, rel: x.cur.rel, mph: x.cur.wind, mode, expert: x.spot.skill === 'expert_only' })
+      * (mode === 'bb' && x.spot.bodyboard ? 1.15 : 1),
+  }));
   const pool = scored.some((x) => x.spot.skill !== 'expert_only')
     ? scored.filter((x) => x.spot.skill !== 'expert_only') : scored;
   return pool.sort((a, b) => b.score - a.score)[0] || null;
+}
+
+const MODES = { surf: 'Surf', bb: 'Bodyboard' };
+
+function modeToggle(mode) {
+  return `<div class="mode" role="group" aria-label="Rank for">${Object.entries(MODES).map(([id, name]) =>
+    `<button class="mode-btn${id === mode ? ' on' : ''}" data-mode="${id}" aria-pressed="${id === mode}">${name}</button>`).join('')}</div>`;
+}
+
+function bindModeToggle(root, onChange) {
+  root.querySelectorAll('[data-mode]').forEach((b) => {
+    b.onclick = () => {
+      noteMode(b.dataset.mode);
+      root.querySelectorAll('[data-mode]').forEach((x) => {
+        x.classList.toggle('on', x === b);
+        x.setAttribute('aria-pressed', x === b);
+      });
+      onChange(b.dataset.mode);
+    };
+  });
 }
 
 // ---- Opener -----------------------------------------------------------------
@@ -173,14 +196,14 @@ function wheelSvg(selected, counts) {
 // First sentence of a spot's notes: its one-line "what's special here".
 const feature = (notes) => (notes || '').split(/(?<=\.)\s/)[0];
 
-function starCards(zone, stars) {
+function starCards(zone, stars, mode) {
   const here = stars.filter((x) => zoneOf(x.spot.region, x.spots) === zone.id);
   if (!here.length) {
     return `<p class="muted hint">No starred beaches in ${esc(zone.name)} yet. Open the list and tap ☆ to add some.</p>`;
   }
-  const best = bestOf(here);
-  return `${best && here.length > 1 ? `<p class="best-line">Best right now: <b>${esc(best.spot.name)}</b>
-      <small>(height, discounted for cross and onshore wind${best.spot.skill === 'expert_only' ? '' : '; expert-only left out'})</small></p>` : ''}
+  const best = bestOf(here, mode);
+  return `${best && here.length > 1 ? `<p class="best-line">Best right now${mode === 'bb' ? ' for bodyboarding' : ''}: <b>${esc(best.spot.name)}</b>
+      <small>(${mode === 'bb' ? 'punchy 2–5 ft scores best' : 'size'}, discounted for cross and onshore wind${best.spot.skill === 'expert_only' ? '' : '; expert-only left out'})</small></p>` : ''}
     <ul class="star-cards">${here.map(({ spot, cur }) => `<li><a class="star-card${best && here.length > 1 && best.spot.id === spot.id ? ' top' : ''}" href="#/spot/${esc(spot.id)}">
       <span class="sc-head"><span class="star-name">${esc(spot.name)}</span>
         <b class="sc-num">${ft(cur?.h)}<small> ft</small></b></span>
@@ -231,7 +254,7 @@ async function renderOpener(fresh = false) {
       </div>
     </div>
     <section class="starred" aria-live="polite">
-      <h2 class="eyebrow" id="star-head"></h2>
+      <div class="star-top"><h2 class="eyebrow" id="star-head"></h2>${modeToggle(rideMode())}</div>
       <div id="zone-stars"></div>
     </section>
     <svg class="waves" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
@@ -250,9 +273,10 @@ async function renderOpener(fresh = false) {
     document.getElementById('zone-name').textContent = zone.name;
     document.getElementById('zone-desc').textContent = zoneRegions(id, spots).map((r) => r.name).join(' · ');
     document.getElementById('star-head').textContent = `Starred in ${zone.name}`;
-    document.getElementById('zone-stars').innerHTML = starCards(zone, stars);
+    document.getElementById('zone-stars').innerHTML = starCards(zone, stars, rideMode());
     $app.querySelectorAll('.wedge').forEach((w) => w.classList.toggle('sel', w.dataset.zone === id));
   };
+  bindModeToggle($app, () => pick(selected));
   // Spin: drag the wheel up or down; it turns with the finger, within the
   // first and last zones (plus a little give), then snaps to the nearest one.
   const wrap = $app.querySelector('.wheel-wrap');
@@ -524,6 +548,7 @@ class SpotView {
         </div>
       </section>
       <section class="cards">
+        <article class="card" id="c-when"></article>
         <article class="card" id="c-swell"></article>
         <article class="card" id="c-wind"></article>
         <article class="card" id="c-tide"></article>
@@ -546,6 +571,7 @@ class SpotView {
     this.strip = document.getElementById('strip');
     this.bindScrubber();
     this.select(hourIndex(fc.time, t), false);
+    this.renderWhen(rideMode());
   }
 
   bindScrubber() {
@@ -582,6 +608,31 @@ class SpotView {
         const d = this.days[Number(b.dataset.day)];
         // Jump to the hour containing first light: dawn patrol by default.
         this.select(hourIndex(this.fc.time, d.firstLight ?? d.date + 6 * 3600), true);
+      };
+    });
+  }
+
+  // Best daylight windows in the next 3 days for the chosen mode. Tapping one
+  // moves the scrubber to its best hour.
+  renderWhen(mode) {
+    const el = document.getElementById('c-when');
+    const isDaylight = (t) => {
+      const d = this.dayFor(t);
+      return !!d && d.firstLight != null && t >= d.firstLight - 1800 && t < d.lastLight;
+    };
+    const wins = whenToGo({ fc: this.fc, tide: this.tide, spot: this.spot, mode, from: now(), isDaylight });
+    el.innerHTML = `<div class="when-top"><h3>When to go <small>next 3 days</small></h3>${modeToggle(mode)}</div>
+      ${wins.length ? `<ul class="windows">${wins.map((w) => `<li><button class="window ${w.label.toLowerCase()}" data-i="${w.peak.i}">
+        <span class="w-when">${fmtWeekday(w.start)} ${fmtHour(w.start)}–${fmtHour(w.end)}</span>
+        <span class="w-what">${ft(w.peak.h)} ft · ${esc(w.peak.rel || '–')} ${whole(w.peak.mph)} mph${w.peak.cls ? ` · ${w.peak.cls} tide` : ''}</span>
+        <span class="w-label">${w.label}</span></button></li>`).join('')}</ul>`
+        : '<p class="muted">Nothing worth the drive in daylight over the next 3 days.</p>'}
+      <p class="fine">${mode === 'bb' ? 'Punchy 2–5 ft scores best' : 'Bigger scores better up to about 10 ft'}; offshore or light wind and the spot's preferred tide count for more. A rough guide built from this forecast.</p>`;
+    bindModeToggle(el, (m) => this.renderWhen(m));
+    el.querySelectorAll('[data-i]').forEach((b) => {
+      b.onclick = () => {
+        this.select(Number(b.dataset.i), true);
+        document.querySelector('.hero').scrollIntoView({ behavior: 'smooth', block: 'start' });
       };
     });
   }
@@ -680,8 +731,10 @@ class SpotView {
     }
 
     // Water and air
+    const suit = wetsuitFor(m.sea_surface_temperature[i]);
     document.getElementById('c-water').innerHTML = `<h3>Water</h3>
-      <p class="big">${whole(m.sea_surface_temperature[i])}<small>°F</small></p>`;
+      <p class="big">${whole(m.sea_surface_temperature[i])}<small>°F</small></p>
+      ${suit ? `<p class="muted suit">Wetsuit: ${suit}</p>` : ''}`;
     document.getElementById('c-air').innerHTML = `<h3>Air</h3>
       <p class="big">${whole(w.temperature_2m[i])}<small>°F</small></p>`;
 
