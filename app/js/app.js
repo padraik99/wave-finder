@@ -134,29 +134,40 @@ function bestOf(list) {
 
 // ---- Opener -----------------------------------------------------------------
 
-// Half wheel on the left edge: centre at (0, R), wedges from top to bottom.
+// Half wheel on the left edge, centre at (0, R). The slot pointing straight
+// right is always the selection; the zones rotate through it. Zone k sits at
+// angle WHEEL_STEP * (k - middle) on the unrotated wheel, so turning the
+// wheel by -that angle brings it into the slot.
+const WHEEL_R = 175;
+const WHEEL_STEP = 50;
+const wheelAngle = (k) => WHEEL_STEP * (k - (ZONES.length - 1) / 2);
+
 function wheelSvg(selected, counts) {
-  const R = 175;
+  const R = WHEEL_R;
   const r = 70;
   const pt = (rad, deg) => {
     const a = (deg * Math.PI) / 180;
-    return `${(rad * Math.cos(a)).toFixed(1)} ${(R + rad * Math.sin(a)).toFixed(1)}`;
+    return [rad * Math.cos(a), R + rad * Math.sin(a)].map((v) => v.toFixed(1));
   };
-  const step = 180 / ZONES.length;
   const wedges = ZONES.map((z, k) => {
-    const a0 = -90 + k * step + 1;
-    const a1 = -90 + (k + 1) * step - 1;
-    const mid = (a0 + a1) / 2;
-    const [lx, ly] = pt((R + r) / 2, mid).split(' ').map(Number);
+    const c = wheelAngle(k);
+    const a0 = c - WHEEL_STEP / 2 + 1;
+    const a1 = c + WHEEL_STEP / 2 - 1;
+    const [lx, ly] = pt((R + r) / 2, c).map(Number);
     const n = counts[z.id] || 0;
     return `<a href="#/zone/${z.id}" class="wedge${z.id === selected ? ' sel' : ''}${n ? '' : ' empty'}"
         data-zone="${z.id}" aria-label="${esc(z.name)}, ${n} spots">
       <path d="M${pt(R, a0)} A${R} ${R} 0 0 1 ${pt(R, a1)} L${pt(r, a1)} A${r} ${r} 0 0 0 ${pt(r, a0)} Z"></path>
-      <text x="${lx}" y="${ly}" text-anchor="middle" class="w-name">${esc(z.name)}</text>
-      <text x="${lx}" y="${ly + 17}" text-anchor="middle" class="w-count">${n} spots</text>
+      <g class="w-label" style="transform-origin: ${lx}px ${ly + 8}px">
+        <text x="${lx}" y="${ly}" text-anchor="middle" class="w-name">${esc(z.name)}</text>
+        <text x="${lx}" y="${ly + 17}" text-anchor="middle" class="w-count">${n} spots</text>
+      </g>
     </a>`;
   }).join('');
-  return `<svg class="wheel" viewBox="0 0 ${R} ${2 * R}" width="${R}" height="${2 * R}">${wedges}</svg>`;
+  return `<svg class="wheel" viewBox="0 0 ${R + 16} ${2 * R}" width="${R + 16}" height="${2 * R}">
+    <g class="rotor">${wedges}</g>
+    <polygon class="slot" points="${R + 15},${R - 10} ${R + 15},${R + 10} ${R + 3},${R}"></polygon>
+  </svg>`;
 }
 
 // First sentence of a spot's notes: its one-line "what's special here".
@@ -216,7 +227,7 @@ async function renderOpener(fresh = false) {
         <p class="zone-name" id="zone-name">${esc(zoneById(selected).name)}</p>
         <p class="muted" id="zone-desc"></p>
         <a class="btn primary go" id="go" href="#/zone/${selected}">Show beaches</a>
-        <p class="fine">Tap or swipe the wheel to switch.</p>
+        <p class="fine">Spin the wheel, or tap a zone.</p>
       </div>
     </div>
     <section class="starred" aria-live="polite">
@@ -242,33 +253,69 @@ async function renderOpener(fresh = false) {
     document.getElementById('zone-stars').innerHTML = starCards(zone, stars);
     $app.querySelectorAll('.wedge').forEach((w) => w.classList.toggle('sel', w.dataset.zone === id));
   };
-  pick(selected);
-  // First tap highlights a zone and shows its stars; tapping it again opens it.
-  $app.querySelectorAll('.wedge').forEach((w) => {
+  // Spin: drag the wheel up or down; it turns with the finger, within the
+  // first and last zones (plus a little give), then snaps to the nearest one.
+  const wrap = $app.querySelector('.wheel-wrap');
+  const rotor = $app.querySelector('.rotor');
+  const wedgeEls = [...$app.querySelectorAll('.wedge')];
+  const live = ZONES.map((z, k) => k).filter((k) => counts[ZONES[k].id]);
+  const maxTurn = -wheelAngle(live[0]);
+  const minTurn = -wheelAngle(live[live.length - 1]);
+  let turn = 0;
+  const turnTo = (deg) => {
+    turn = deg;
+    rotor.style.setProperty('--turn', `${deg}deg`);
+    wedgeEls.forEach((w, k) => {
+      const off = Math.abs(wheelAngle(k) + deg) / WHEEL_STEP;
+      w.style.opacity = w.classList.contains('empty') ? 0.3 : Math.max(0.45, 1 - off * 0.45).toFixed(2);
+    });
+  };
+  const nearest = (deg) => live.reduce((best, k) =>
+    (Math.abs(wheelAngle(k) + deg) < Math.abs(wheelAngle(best) + deg) ? k : best), live[0]);
+  const spinTo = (id) => {
+    const k = ZONES.findIndex((z) => z.id === id);
+    turnTo(-wheelAngle(k));
+    pick(id);
+  };
+  spinTo(selected);
+
+  let drag = null;
+  let dragged = false;
+  wrap.addEventListener('pointerdown', (e) => {
+    drag = { y: e.clientY, turn };
+    dragged = false;
+  });
+  window.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const dy = e.clientY - drag.y;
+    if (Math.abs(dy) > 6) {
+      dragged = true;
+      rotor.classList.add('dragging');
+    }
+    if (dragged) turnTo(Math.min(Math.max(drag.turn + dy * 0.4, minTurn - 12), maxTurn + 12));
+  });
+  const release = () => {
+    if (!drag) return;
+    drag = null;
+    rotor.classList.remove('dragging');
+    if (dragged) spinTo(ZONES[nearest(turn)].id);
+  };
+  window.addEventListener('pointerup', release);
+  window.addEventListener('pointercancel', release);
+
+  // Tap a zone to spin it into the slot; tap the one in the slot to open it.
+  wedgeEls.forEach((w) => {
     w.onclick = (e) => {
-      if (w.classList.contains('empty')) {
+      if (dragged || w.classList.contains('empty')) {
         e.preventDefault();
+        dragged = false;
         return;
       }
       if (w.dataset.zone !== selected) {
         e.preventDefault();
-        pick(w.dataset.zone);
+        spinTo(w.dataset.zone);
       }
     };
-  });
-  // Swipe up or down on the wheel to spin the selection.
-  const wheel = $app.querySelector('.wheel-wrap');
-  let y0 = null;
-  wheel.addEventListener('touchstart', (e) => { y0 = e.touches[0].clientY; }, { passive: true });
-  wheel.addEventListener('touchend', (e) => {
-    if (y0 == null) return;
-    const dy = e.changedTouches[0].clientY - y0;
-    y0 = null;
-    if (Math.abs(dy) < 30) return;
-    const live = ZONES.filter((z) => counts[z.id]);
-    const k = live.findIndex((z) => z.id === selected);
-    const next = live[Math.min(Math.max(k + (dy < 0 ? 1 : -1), 0), live.length - 1)];
-    if (next) pick(next.id);
   });
   prefetch(index);
 }

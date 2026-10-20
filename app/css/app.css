@@ -198,14 +198,19 @@ small { font-size: 0.75em; }
 .opener-top { display: flex; justify-content: space-between; align-items: flex-start; padding-top: 24px; }
 .opener h1 { font-size: 2.6rem; line-height: 1; font-weight: 800; letter-spacing: -0.02em; animation: rise 0.6s ease-out both; }
 .eyebrow { margin: 0 0 6px; color: var(--muted); font-size: 0.75rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; }
-.opener-body { display: grid; grid-template-columns: 175px 1fr; gap: 18px; align-items: center; margin: clamp(18px, 22vh - 100px, 120px) 0 0 -16px; position: relative; z-index: 1; }
+.opener-body { display: grid; grid-template-columns: 191px 1fr; gap: 18px; align-items: center; margin: clamp(18px, 22vh - 100px, 120px) 0 0 -16px; position: relative; z-index: 1; }
+.wheel-wrap { touch-action: none; user-select: none; -webkit-user-select: none; }
 .wheel { display: block; animation: spin-in 0.7s cubic-bezier(.2, .8, .2, 1) both; transform-origin: 0 50%; }
+.rotor { --turn: 0deg; transform-box: view-box; transform-origin: 0 175px; transform: rotate(var(--turn)); transition: transform 0.45s cubic-bezier(.2, .9, .3, 1.15); }
+.rotor.dragging, .rotor.dragging .w-label { transition: none; }
+.w-label { transform-box: view-box; transform: rotate(calc(-1 * var(--turn))); transition: transform 0.45s cubic-bezier(.2, .9, .3, 1.15); }
+.wedge { transition: opacity 0.3s; }
+.slot { fill: var(--accent); }
 .wedge path { fill: var(--surface-2); stroke: var(--bg); stroke-width: 2; transition: fill 0.2s; }
 .wedge.sel path { fill: var(--accent); }
 .wedge .w-name { fill: var(--text); font-size: 17px; font-weight: 700; }
 .wedge .w-count { fill: var(--muted); font-size: 12px; }
 .wedge.sel .w-name, .wedge.sel .w-count { fill: #04121d; }
-.wedge.empty { opacity: 0.45; }
 .wedge:focus-visible path { stroke: var(--text); }
 .zone-pick { min-width: 0; }
 .zone-pick .eyebrow { margin: 0; }
@@ -399,4 +404,5 @@ small { font-size: 0.75em; }
 @media (prefers-reduced-motion: reduce) {
   * { scroll-behavior: auto !important; }
   .waves path, .wheel, .opener h1 { animation: none !important; }
+  .rotor, .w-label { transition: none !important; }
 }
