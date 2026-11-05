@@ -9,6 +9,11 @@
   "orientation": "portrait",
   "background_color": "#0b1420",
   "theme_color": "#0b1420",
+  "shortcuts": [
+    { "name": "NorCal beaches", "short_name": "NorCal", "url": "./#/zone/norcal" },
+    { "name": "Central beaches", "short_name": "Central", "url": "./#/zone/central" },
+    { "name": "SoCal beaches", "short_name": "SoCal", "url": "./#/zone/socal" }
+  ],
   "icons": [
     { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
