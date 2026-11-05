@@ -1,0 +1,50 @@
+# One ntfy message at about 6 PM Pacific listing starred spots (alerts.json)
+# with a Good When to go window in the next 2 days. Sends nothing when
+# nothing is Good.
+#
+# Main trigger: cron-job.org POSTs workflow_dispatch at 18:00 America/Los_Angeles
+# (it follows daylight saving). GitHub's own schedule is the backup: cron is
+# UTC, so it asks at 01:05 and 02:05 UTC (6 PM in PDT and in PST). The script
+# only sends between 5:50 and 9 PM Pacific and skips if a digest went out in
+# the last 6 h, so the extra runs never double up.
+name: Evening digest
+
+on:
+  schedule:
+    - cron: "5 1 * * *"
+    - cron: "5 2 * * *"
+  workflow_dispatch:
+    inputs:
+      force:
+        description: Send now (test), whatever the time; says so if nothing is Good
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: evening-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Latest published data
+        run: |
+          mkdir -p data
+          git fetch --depth=1 origin data
+          git archive FETCH_HEAD | tar -x -C data
+      - name: Build and send the digest
+        run: python -m pipeline.digest --data data --alerts alerts.json ${{ inputs.force && '--force' || '' }}

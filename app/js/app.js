@@ -8,8 +8,9 @@ import {
   noteMode, noteZone, recentSpots, rideMode, starredSpots, toggleStar,
 } from './data.js';
 import {
-  RELATION, buoyVsForecast, compass, distanceMi, fmtAge, fmtDate, fmtHour, fmtTime, fmtWeekday,
-  ft, hourIndex, hourScore, localDayKey, tideClasses, tideSuits, swellTrains, tideAt, weatherLabel, wetsuitFor, whenToGo, whole,
+  RELATION, buoyVsForecast, compass, daylightFor, distanceMi, fmtAge, fmtDate, fmtHour, fmtTime, fmtWeekday,
+  ft, hourIndex, localDayKey, nearbyPicks, nowScore, scoreLabel, tideClasses, tideSuits, swellTrains, tideAt,
+  weatherLabel, wetsuitFor, whenToGo, whole,
 } from './model.js';
 import { sunTimes } from './sun.js';
 import { dirArrow, relClass, scrubberStrip, sparkline, tideCurve, windDiagram } from './svg.js';
@@ -125,11 +126,7 @@ function spotRow(s, cur, maxH) {
 // mode). Expert-only spots are skipped unless they are all that is starred:
 // Mavericks shouldn't win every day.
 function bestOf(list, mode) {
-  const scored = list.filter((x) => x.cur?.h != null).map((x) => ({
-    ...x,
-    score: hourScore({ h: x.cur.h, rel: x.cur.rel, mph: x.cur.wind, mode, expert: x.spot.skill === 'expert_only' })
-      * (mode === 'bb' && x.spot.bodyboard ? 1.15 : 1),
-  }));
+  const scored = list.filter((x) => x.cur?.h != null).map((x) => ({ ...x, score: nowScore(x.spot, x.cur, mode) }));
   const pool = scored.some((x) => x.spot.skill !== 'expert_only')
     ? scored.filter((x) => x.spot.skill !== 'expert_only') : scored;
   return pool.sort((a, b) => b.score - a.score)[0] || null;
@@ -214,6 +211,100 @@ function starCards(zone, stars, mode) {
     </a></li>`).join('')}</ul>`;
 }
 
+// ---- Near me ------------------------------------------------------------------
+// The phone's position is asked for only when Near me is tapped, kept in this
+// variable for the session, and never stored or sent anywhere: the ranking
+// runs here on the phone against data already downloaded.
+let here = null;
+
+function nearCard(state, entries, mode) {
+  if (state.error) {
+    return `<p class="banner warn">${esc(state.error)}</p>
+      <button class="btn" id="near-btn">Try again</button>`;
+  }
+  if (state.loading) return '<p class="muted">Finding you…</p>';
+  if (!here) {
+    return `<button class="btn near-btn" id="near-btn">📍 Near me</button>
+      <p class="fine">Best spot near you right now. Your location stays on this phone.</p>`;
+  }
+  const { far, picks } = nearbyPicks(entries, here, mode);
+  if (!picks.length) return '<p class="muted">No current data to rank spots with.</p>';
+  const [top, ...more] = picks;
+  const mi = (p) => `${Math.round(p.miles)} mi`;
+  return `<p class="eyebrow">${far ? 'No spots within 75 mi · nearest' : `Best near you${mode === 'bb' ? ' for bodyboarding' : ''}`}</p>
+    <a class="star-card near-top" href="#/spot/${esc(top.spot.id)}">
+      <span class="sc-head"><span class="star-name">${esc(top.spot.name)}</span>
+        <b class="sc-num">${ft(top.cur.h)}<small> ft</small></b></span>
+      <span class="sc-wind"><span class="chip ${relClass(top.cur.rel)}">${top.cur.rel ? `${esc(top.cur.rel)} ${whole(top.cur.wind)}` : 'no data'}</span>
+        <span class="tag">${mi(top)}</span><span class="tag score-${scoreLabel(top.score).toLowerCase()}">${scoreLabel(top.score)}</span></span>
+    </a>
+    ${more.length ? `<ul class="near-more">${more.map((p) => `<li><a href="#/spot/${esc(p.spot.id)}">
+      <span>${esc(p.spot.name)}</span><span class="muted">${mi(p)} · ${ft(p.cur.h)} ft · ${scoreLabel(p.score)}</span></a></li>`).join('')}</ul>` : ''}
+    <p class="fine">${far ? '' : 'Conditions now, discounted by distance: a spot 50 mi away needs twice the score of one next door. Expert-only spots left out. '}
+      <button class="link-btn" id="near-btn">Update location</button></p>`;
+}
+
+function bindNear(root, entries) {
+  const el = root.querySelector('#near');
+  const draw = (state = {}) => {
+    el.innerHTML = nearCard(state, entries, rideMode());
+    const btn = el.querySelector('#near-btn');
+    if (btn) btn.onclick = locate;
+  };
+  const locate = () => {
+    if (!navigator.geolocation) {
+      draw({ error: "This browser can't share location." });
+      return;
+    }
+    draw({ loading: true });
+    navigator.geolocation.getCurrentPosition((pos) => {
+      here = { lat: pos.coords.latitude, lon: pos.coords.longitude };
+      draw();
+    }, (err) => {
+      draw({
+        error: err.code === 1
+          ? 'Location is blocked for this app. In Chrome: tap ⋮ → Settings → Site settings → Location, and allow padraik99.github.io.'
+          : "Couldn't get a location fix. Try again in the open, or with Wi-Fi on.",
+      });
+    }, { enableHighAccuracy: false, timeout: 15000, maximumAge: 10 * 60 * 1000 });
+  };
+  draw();
+  return draw;
+}
+
+// ---- Alert on these -------------------------------------------------------------
+// The evening digest (pipeline/digest.py) reads alerts.json in the repo. The
+// button copies the stars in that file's format; the user pastes it on GitHub.
+const ALERTS_EDIT_URL = 'https://github.com/padraik99/wave-finder/edit/main/alerts.json';
+
+function alertsJson(ids, mode) {
+  return `${JSON.stringify({
+    _how: 'Evening digest at about 6 PM: starred spots with a Good When to go window in the next 2 days. '
+      + "Made by the app's Alert on these button; paste over this whole file.",
+    mode,
+    stars: ids,
+  }, null, 2)}\n`;
+}
+
+function bindAlertCopy(root) {
+  const btn = root.querySelector('#alert-copy');
+  if (!btn) return;
+  const msg = root.querySelector('#alert-msg');
+  btn.onclick = async () => {
+    const ids = starredSpots();
+    const text = alertsJson(ids, rideMode());
+    const steps = `Next: open <a href="${ALERTS_EDIT_URL}" target="_blank" rel="noopener">alerts.json on GitHub</a>,
+      select everything in the box, paste, then tap Commit changes.`;
+    try {
+      await navigator.clipboard.writeText(text);
+      msg.innerHTML = `Copied ${ids.length} star${ids.length === 1 ? '' : 's'} (${MODES[rideMode()]} mode). ${steps}`;
+    } catch {
+      msg.innerHTML = `Couldn't copy automatically. Long-press the text below, Select all, Copy. ${steps}
+        <textarea class="copy-box" readonly rows="6">${esc(text)}</textarea>`;
+    }
+  };
+}
+
 async function renderOpener(fresh = false) {
   let core;
   try {
@@ -243,6 +334,7 @@ async function renderOpener(fresh = false) {
       <button class="icon-btn" id="refresh" aria-label="Refresh">⟳</button>
     </header>
     ${freshness(index.generated_at, fromCache)}
+    <section class="near" id="near" aria-live="polite"></section>
     <div class="opener-body">
       <nav class="wheel-wrap" aria-label="Regions">${wheelSvg(selected, counts)}</nav>
       <div class="zone-pick">
@@ -256,6 +348,8 @@ async function renderOpener(fresh = false) {
     <section class="starred" aria-live="polite">
       <div class="star-top"><h2 class="eyebrow" id="star-head"></h2>${modeToggle(rideMode())}</div>
       <div id="zone-stars"></div>
+      ${stars.length ? `<div class="alert-row"><button class="btn" id="alert-copy">🔔 Alert on these</button>
+        <p class="fine" id="alert-msg">Copies all ${stars.length} starred spots for the 6 PM digest of Good windows.</p></div>` : ''}
     </section>
     <svg class="waves" viewBox="0 0 400 120" preserveAspectRatio="none" aria-hidden="true">
       <path class="w1" d="M-20 50 C 60 30 120 70 200 48 S 330 30 420 50 L420 120 L-20 120 Z"></path>
@@ -276,7 +370,12 @@ async function renderOpener(fresh = false) {
     document.getElementById('zone-stars').innerHTML = starCards(zone, stars, rideMode());
     $app.querySelectorAll('.wedge').forEach((w) => w.classList.toggle('sel', w.dataset.zone === id));
   };
-  bindModeToggle($app, () => pick(selected));
+  const drawNear = bindNear($app, spots.spots.map((spot) => ({ spot, cur: nowFor(byId[spot.id], t) })));
+  bindAlertCopy($app);
+  bindModeToggle($app, () => {
+    pick(selected);
+    drawNear();
+  });
   // Spin: drag the wheel up or down; it turns with the finger, within the
   // first and last zones (plus a little give), then snaps to the nearest one.
   const wrap = $app.querySelector('.wheel-wrap');
@@ -630,10 +729,7 @@ class SpotView {
   // moves the scrubber to its best hour.
   renderWhen(mode) {
     const el = document.getElementById('c-when');
-    const isDaylight = (t) => {
-      const d = this.dayFor(t);
-      return !!d && d.firstLight != null && t >= d.firstLight - 1800 && t < d.lastLight;
-    };
+    const isDaylight = daylightFor(this.fc, this.spot.lat, this.spot.lon);
     const wins = whenToGo({ fc: this.fc, tide: this.tide, spot: this.spot, mode, from: now(), isDaylight });
     el.innerHTML = `<div class="when-top"><h3>When to go <small>next 3 days</small></h3>${modeToggle(mode)}</div>
       ${wins.length ? `<ul class="windows">${wins.map((w) => `<li><button class="window ${w.label.toLowerCase()}" data-i="${w.peak.i}">

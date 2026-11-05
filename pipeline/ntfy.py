@@ -29,6 +29,34 @@ def send(session, title: str, message: str, priority: str = "default",
     return True
 
 
+def recent_titles(session, since: str = "6h", topic: str | None = None,
+                  server: str | None = None) -> list[str] | None:
+    """Titles of messages ntfy still holds for the topic (its cache keeps about
+    12 h). None if there is no topic or the server can't be asked."""
+    import json
+
+    topic = topic or os.environ.get("NTFY_TOPIC", "").strip()
+    if not topic:
+        return None
+    server = (server or os.environ.get("NTFY_SERVER") or DEFAULT_SERVER).rstrip("/")
+    try:
+        resp = session.get(f"{server}/{topic}/json", params={"poll": "1", "since": since},
+                           timeout=30)
+    except Exception:
+        return None
+    if resp.status_code >= 400:
+        return None
+    titles = []
+    for line in resp.text.splitlines():
+        try:
+            msg = json.loads(line)
+        except ValueError:
+            continue
+        if msg.get("event") == "message":
+            titles.append(msg.get("title") or "")
+    return titles
+
+
 def main(argv=None) -> int:
     import argparse
 

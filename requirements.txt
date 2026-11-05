@@ -1,1 +1,3 @@
 requests==2.34.2
+# Time zone data for zoneinfo (Windows has none built in; harmless on Linux)
+tzdata==2026.6

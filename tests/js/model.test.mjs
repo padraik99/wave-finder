@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import {
-  buoyVsForecast, compass, fmtAge, hourIndex, hourScore, inWindow, nearestIndex, sizeScore, swellTrains,
+  buoyVsForecast, compass, daylightFor, fmtAge, hourIndex, hourScore, inWindow, nearbyPicks, nearestIndex,
+  sizeScore, swellTrains,
   tideAt, tideClass, tideSuits, wetsuitFor, whenToGo, windScore,
 } from '../../app/js/model.js';
 
@@ -158,6 +159,41 @@ test('whenToGo finds the clean daylight window', () => {
   // Nothing worth it: tiny and onshore all day.
   fcDay.marine.wave_height = time.map(() => 0.5);
   assert.deepEqual(whenToGo({ fc: fcDay, tide: tideDay, spot, from: DAY0, isDaylight }), []);
+});
+
+test('nearbyPicks trades score against distance', () => {
+  const here = { lat: 36.97, lon: -122.03 }; // Santa Cruz
+  const mk = (id, lat, lon, h, rel, extra = {}) => ({
+    spot: { id, lat, lon, ...extra }, cur: { h, rel, wind: 8 },
+  });
+  const entries = [
+    mk('doorstep', 36.96, -122.02, 2, 'onshore'), // ~1 mi, small and onshore
+    mk('short_drive', 37.17, -122.36, 5, 'offshore'), // ~23 mi, good
+    mk('far', 35.14, -120.64, 6, 'offshore'), // ~150 mi, outside the radius
+    mk('mavs', 37.49, -122.5, 20, 'offshore', { skill: 'expert_only' }),
+    mk('no_data', 36.95, -122.0, null, 'offshore'),
+  ];
+  const r = nearbyPicks(entries, here, 'surf');
+  assert.equal(r.far, false);
+  assert.deepEqual(r.picks.map((p) => p.spot.id), ['short_drive', 'doorstep']);
+  assert.ok(r.picks[0].miles > 20 && r.picks[0].miles < 26);
+  // Bodyboard nudge counts too.
+  const bb = nearbyPicks([mk('a', 36.96, -122.02, 3, 'cross'), mk('b', 36.96, -122.02, 3, 'cross', { bodyboard: true })],
+    here, 'bb');
+  assert.equal(bb.picks[0].spot.id, 'b');
+  // Nothing in range: nearest first, flagged.
+  const away = nearbyPicks(entries, { lat: 32.7, lon: -117.2 }, 'surf');
+  assert.equal(away.far, true);
+  assert.equal(away.picks[0].spot.id, 'far');
+});
+
+test('daylightFor follows first and last light', () => {
+  const fcDay = { sun: [{ date: DAY0 }] };
+  const isDay = daylightFor(fcDay, 36.95, -121.97);
+  assert.equal(isDay(DAY0 + 3 * 3600), false);
+  assert.equal(isDay(DAY0 + 12 * 3600), true);
+  assert.equal(isDay(DAY0 + 22 * 3600), false);
+  assert.equal(isDay(DAY0 + 36 * 3600), false); // no sun entry for the next day
 });
 
 test('wetsuit rule of thumb', () => {

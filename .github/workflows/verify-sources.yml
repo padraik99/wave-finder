@@ -5,7 +5,7 @@ name: Verify sources
 
 on:
   push:
-    branches-ignore: [data]
+    branches-ignore: [data, watch]
     paths:
       - spots.json
       - "pipeline/**"
