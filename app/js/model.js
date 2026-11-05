@@ -1,4 +1,9 @@
 // Pure data helpers: no DOM, no fetch. Unit-tested in tests/js/.
+// The scoring half (hourScore, whenToGo, daylightFor) has a Python twin in
+// pipeline/score.py for the evening digest; tests/cases/scoring.json keeps
+// the two in step, so change both or neither.
+
+import { sunTimes } from './sun.js';
 
 export const TZ = 'America/Los_Angeles';
 const HOUR = 3600;
@@ -279,6 +284,48 @@ export function whenToGo({ fc, tide, spot, mode = 'surf', from, hours = 72, isDa
     const peak = r.reduce((a, b) => (b.score > a.score ? b : a));
     return { start: r[0].t, end: r[r.length - 1].t + HOUR, peak, score: peak.score, label: scoreLabel(peak.score) };
   }).sort((a, b) => b.score - a.score).slice(0, max).sort((a, b) => a.start - b.start);
+}
+
+// isDaylight for whenToGo: from 30 min before first light to last light, on
+// the local days the forecast's sun list covers.
+export function daylightFor(fc, lat, lon) {
+  const days = new Map();
+  for (const d of fc.sun || []) {
+    const key = localDayKey(d.date + 12 * HOUR);
+    if (!days.has(key)) days.set(key, sunTimes(d.date, lat, lon));
+  }
+  return (t) => {
+    const d = days.get(localDayKey(t));
+    return !!d && d.firstLight != null && d.lastLight != null && t >= d.firstLight - 1800 && t < d.lastLight;
+  };
+}
+
+// Score for conditions right now ({h, rel, wind}), with the bodyboard nudge
+// for spots tagged for it.
+export function nowScore(spot, cur, mode) {
+  return hourScore({ h: cur.h, rel: cur.rel, mph: cur.wind, mode, expert: spot.skill === 'expert_only' })
+    * (mode === 'bb' && spot.bodyboard ? 1.15 : 1);
+}
+
+// Spots worth driving to from `here` ({lat, lon}), best first: the current
+// score shrunk by distance (score / (1 + miles / 50): a spot 50 mi away needs
+// twice the score of one on your doorstep). Only spots within radiusMi count;
+// with none that close, `far` is set and picks are the nearest few. Expert-only
+// spots are left out unless nothing else has data.
+export const NEAR_MI = 50;
+export function nearbyPicks(entries, here, mode = 'surf', { radiusMi = 75, n = 3 } = {}) {
+  const all = entries.filter((x) => x.cur?.h != null).map((x) => {
+    const miles = distanceMi(here.lat, here.lon, x.spot.lat, x.spot.lon);
+    const score = nowScore(x.spot, x.cur, mode);
+    return { ...x, miles, score, rank: score / (1 + miles / NEAR_MI) };
+  });
+  const usable = all.some((x) => x.spot.skill !== 'expert_only')
+    ? all.filter((x) => x.spot.skill !== 'expert_only') : all;
+  const near = usable.filter((x) => x.miles <= radiusMi);
+  if (!near.length) {
+    return { far: true, picks: usable.sort((a, b) => a.miles - b.miles).slice(0, n) };
+  }
+  return { far: false, picks: near.sort((a, b) => b.rank - a.rank).slice(0, n) };
 }
 
 // Rule-of-thumb wetsuit for a water temperature in °F (California norms).

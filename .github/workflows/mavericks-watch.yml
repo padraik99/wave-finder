@@ -1,0 +1,67 @@
+# Mavericks Watch (pipeline/mavericks.py). Every 30 min: while the Mavericks
+# forecast stays under 15 ft for the next 5 days this only reads the published
+# forecast and stops. Once it switches on, it reads buoys 46059, 46214 and 46012
+# straight from NDBC, pings when forerunners (18 s+) reach 46059, and stands
+# down after the swell passes.
+#
+# Main trigger: cron-job.org POSTs workflow_dispatch every 30 min. GitHub's
+# schedule below is the backup (it skips many runs on this repo). Extra runs
+# are harmless: the state file stops repeat messages.
+#
+# State lives on the `watch` branch (one commit, replaced when the state
+# changes). Only this workflow writes it.
+name: Mavericks Watch
+
+on:
+  schedule:
+    - cron: "11,41 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: mavericks-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      NTFY_TOPIC: ${{ secrets.NTFY_TOPIC }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Latest published data and watch state
+        run: |
+          mkdir -p data state
+          git fetch --depth=1 origin data
+          git archive FETCH_HEAD | tar -x -C data
+          if git ls-remote --exit-code --heads origin watch > /dev/null; then
+            git fetch --depth=1 origin watch
+            git archive FETCH_HEAD | tar -x -C state
+          fi
+          cp -r state state.before
+      - name: Check
+        run: python -m pipeline.mavericks --data data --state state/mavericks.json
+      - name: Save state if it changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if diff -rq state state.before > /dev/null; then
+            echo "State unchanged."
+            exit 0
+          fi
+          cd state
+          git init -q -b watch
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "watch: $(date -u +%Y-%m-%dT%H:%MZ)"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" watch
