@@ -54,7 +54,7 @@ export function sparkline(heights, wind, max) {
 
 // The hour scrubber strip: one bar per hour (height = wave height, colour =
 // wind), night shaded, day boundaries labelled.
-export function scrubberStrip({ times, heights, relations, nights, days, barW, h, max }) {
+export function scrubberStrip({ times, heights, relations, nights, days, barW, h, max, tideOk = [] }) {
   const top = 22;
   const plot = h - top;
   const scale = plot / Math.max(max, 4);
@@ -67,11 +67,14 @@ export function scrubberStrip({ times, heights, relations, nights, days, barW, h
     return `<rect class="bar ${relClass(relations[i])}" x="${i * barW + 1}" y="${(h - bh).toFixed(1)}"
       width="${barW - 2}" height="${bh.toFixed(1)}" rx="1" />`;
   }).join('');
+  // Thin band under the day labels for hours at the spot's preferred tide.
+  const tides = tideOk.map((ok, i) => (ok
+    ? `<rect class="tide-ok" x="${i * barW}" y="${top - 5}" width="${barW}" height="4" />` : '')).join('');
   const labels = days.map(({ t, label }) =>
     `<line class="day-line" x1="${x(t)}" x2="${x(t)}" y1="0" y2="${h}" />
      <text class="day-label" x="${x(t) + 4}" y="14">${label}</text>`).join('');
   return `<svg class="strip" width="${times.length * barW}" height="${h}" aria-hidden="true">
-    ${shade}${labels}${bars}</svg>`;
+    ${shade}${tides}${labels}${bars}</svg>`;
 }
 
 // One day's tide curve with a marker at time t.

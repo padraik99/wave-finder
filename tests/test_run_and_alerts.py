@@ -199,3 +199,53 @@ def test_verify_flags_land_points():
     routes["marine-api.open-meteo.com"] = nulls
     _, _, fail = verify.check(FakeSession(routes), spots.load(), NOW)
     assert any("on land" in line for line in fail)
+
+
+def test_feed_outage_groups_buoys_that_stopped_together():
+    t = NOW - 9 * 3600
+    same = {b: t + k * 60 for k, b in enumerate(["a", "b", "c", "d", "e"])}
+    assert verify.feed_outage(same) == set(same)
+    assert verify.feed_outage({"a": t, "b": t}) == set()  # two dead buoys are just dead
+    spread = {b: t + k * 3 * 3600 for k, b in enumerate(["a", "b", "c", "d"])}
+    assert verify.feed_outage(spread) == set()
+    assert verify.feed_outage({"a": None, "b": None, "c": None, "d": None}) == set()
+
+
+def _verify_with_dead(dead):
+    from .conftest import DEAD_TXT
+
+    routes = healthy_routes()
+    healthy_ndbc = routes["realtime2"]
+
+    def ndbc(url, params):
+        if url.endswith(".txt") and dead(url):
+            return FakeResponse(200, text=DEAD_TXT)
+        return healthy_ndbc(url, params)
+
+    routes["realtime2"] = ndbc
+    routes["activestations.xml"] = FakeResponse(200, text=ACTIVE_XML)
+    return verify.check(FakeSession(routes), spots.load(), NOW)
+
+
+def test_verify_feed_outage_warns_instead_of_failing():
+    # Every NDBC-run buoy (not the CDIP 462xx ones) stuck at the same old reading.
+    _, warn, fail = _verify_with_dead(lambda url: "/462" not in url)
+    assert fail == []
+    assert warn[0].startswith(verify.FEED_OUTAGE_PREFIX)
+    assert any("spot arena_cove" in w and "delayed feed" in w for w in warn)
+
+
+def test_verify_two_dead_buoys_still_fail():
+    _, warn, fail = _verify_with_dead(lambda url: "46014" in url or "46013" in url)
+    assert not any(w.startswith(verify.FEED_OUTAGE_PREFIX) for w in warn)
+    assert any("spot arena_cove" in f for f in fail)
+
+
+def test_run_keeps_a_skill_log_per_buoy(tmp_path, healthy_session):
+    run.run(tmp_path, healthy_session, now=NOW)
+    log = _load(tmp_path / "skill" / "46012.json")
+    assert isinstance(log, list)
+    assert "skill" in _load(tmp_path / "buoys" / "46012.json")
+    # A second run keeps what the first logged.
+    run.run(tmp_path, healthy_session, now=NOW + 3600)
+    assert len(_load(tmp_path / "skill" / "46012.json")) >= len(log)

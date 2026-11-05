@@ -9,7 +9,7 @@ import {
 } from './data.js';
 import {
   RELATION, buoyVsForecast, compass, distanceMi, fmtAge, fmtDate, fmtHour, fmtTime, fmtWeekday,
-  ft, hourIndex, hourScore, localDayKey, swellTrains, tideAt, weatherLabel, wetsuitFor, whenToGo, whole,
+  ft, hourIndex, hourScore, localDayKey, tideClasses, tideSuits, swellTrains, tideAt, weatherLabel, wetsuitFor, whenToGo, whole,
 } from './model.js';
 import { sunTimes } from './sun.js';
 import { dirArrow, relClass, scrubberStrip, sparkline, tideCurve, windDiagram } from './svg.js';
@@ -470,6 +470,15 @@ async function renderSpot(id) {
   new SpotView(spot, entry, fcRes.data, tide, buoy, core).mount(fcRes.fromCache || core.fromCache);
 }
 
+// The week's record at this buoy, from the pipeline's skill log.
+function skillLine(sk) {
+  if (!sk) return '';
+  const lean = Math.abs(sk.bias_ft) < 0.3 ? 'on target on average'
+    : `${ft(Math.abs(sk.bias_ft))} ft ${sk.bias_ft > 0 ? 'smaller than the buoy' : 'bigger than the buoy'} on average`;
+  return `<p class="skill">Past ${sk.days} days: the forecast has run ${lean}; typical gap ${ft(sk.mean_abs_ft)} ft
+    <small>(${sk.pairs} hourly readings)</small></p>`;
+}
+
 class SpotView {
   constructor(spot, entry, fc, tide, buoy, core) {
     Object.assign(this, { spot, entry, fc, tide, buoy, core });
@@ -507,6 +516,9 @@ class SpotView {
     const dayMarks = this.days.map((d) => ({ t: d.date, label: fmtDate(d.date + 43200) }));
     const max = Math.max(...fc.marine.wave_height.filter((v) => v != null), 4);
     const todayKey = localDayKey(t);
+    const pref = spot.tide_preference;
+    const tideOk = this.tide && pref && pref !== 'any'
+      ? tideClasses(this.tide, fc.time).map((c) => tideSuits(pref, c) === true) : [];
 
     $app.innerHTML = `<main class="screen spot">
       <header class="top"><a class="icon-btn" href="#/zone/${zone}" aria-label="Back">←</a>
@@ -537,8 +549,10 @@ class SpotView {
         }).join('')}</div>
         <div class="strip-wrap"><div class="strip-scroll" id="strip">
           ${scrubberStrip({ times: fc.time, heights: fc.marine.wave_height, relations: fc.derived.wind_relation,
-            nights, days: dayMarks, barW: BAR_W, h: 110, max })}
+            nights, days: dayMarks, barW: BAR_W, h: 110, max, tideOk })}
         </div><div class="needle" aria-hidden="true"></div></div>
+        ${tideOk.some(Boolean) ? `<p class="tide-key"><span class="tide-swatch"></span>${
+          esc(pref.replace(/_/g, ' '))} tide, this spot's best</p>` : ''}
         <div class="step-row">
           <button class="btn" data-step="-3">−3 h</button>
           <button class="btn" data-step="-1">−1 h</button>
@@ -779,6 +793,7 @@ class SpotView {
         </tbody>
       </table>
       ${verdict ? `<p class="verdict ${delta > 0.4 ? 'up' : delta < -0.4 ? 'down' : ''}">${verdict}</p>` : ''}
+      ${skillLine(buoy.skill)}
       ${sp && sp.swell_height_ft != null ? `<p class="muted">Swell part: ${ft(sp.swell_height_ft)} ft @ ${whole(sp.swell_period_s)} s from ${compass(sp.swell_dir_deg)};
         wind waves ${ft(sp.wind_wave_height_ft)} ft.</p>` : ''}
       <p class="fine">${where === 'buoy'

@@ -294,6 +294,11 @@ small { font-size: 0.75em; }
 .strip .night { fill: var(--night); }
 .strip .day-line { stroke: var(--line); stroke-width: 1; }
 .strip .day-label { fill: var(--muted); font-size: 11px; }
+.strip .tide-ok { fill: var(--accent); opacity: 0.8; }
+.tide-key { display: flex; align-items: center; gap: 6px; margin: 6px 16px 0; color: var(--muted); font-size: 0.8rem; text-transform: none; }
+.tide-swatch { width: 18px; height: 4px; border-radius: 2px; background: var(--accent); opacity: 0.8; }
+.skill { margin: 6px 0 0; font-size: 0.9rem; }
+.skill small { color: var(--muted); }
 .needle {
   position: absolute;
   top: 18px;

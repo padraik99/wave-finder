@@ -201,19 +201,30 @@ export function windScore(rel, mph) {
   return f;
 }
 
-// low / mid / high: where the height sits within that local day's range.
-export function tideClass(tide, t) {
-  const now = tideAt(tide, t);
-  if (!now || now.height == null) return null;
-  const key = localDayKey(t);
-  const { time, height } = tide.hourly;
-  const day = height.filter((v, k) => v != null && localDayKey(time[k]) === key);
-  const lo = Math.min(...day);
-  const hi = Math.max(...day);
-  if (!(hi > lo)) return 'mid';
-  const f = (now.height - lo) / (hi - lo);
-  return f < 1 / 3 ? 'low' : f > 2 / 3 ? 'high' : 'mid';
+// low / mid / high for each time: where the tide height sits within that
+// local day's range. Works out each day's range once (date formatting is the
+// slow part), so a whole 16-day strip stays cheap.
+export function tideClasses(tide, times) {
+  if (!tide?.hourly?.time?.length) return times.map(() => null);
+  const range = new Map();
+  tide.hourly.time.forEach((u, k) => {
+    const v = tide.hourly.height[k];
+    if (v == null) return;
+    const key = localDayKey(u);
+    const r = range.get(key) || { lo: Infinity, hi: -Infinity };
+    range.set(key, { lo: Math.min(r.lo, v), hi: Math.max(r.hi, v) });
+  });
+  return times.map((t) => {
+    const now = tideAt(tide, t);
+    const r = range.get(localDayKey(t));
+    if (!now || now.height == null || !r) return null;
+    if (!(r.hi > r.lo)) return 'mid';
+    const f = (now.height - r.lo) / (r.hi - r.lo);
+    return f < 1 / 3 ? 'low' : f > 2 / 3 ? 'high' : 'mid';
+  });
 }
+
+export const tideClass = (tide, t) => tideClasses(tide, [t])[0];
 
 const TIDE_OK = {
   low: ['low'], low_to_mid: ['low', 'mid'], mid: ['mid'], mid_to_high: ['mid', 'high'],
@@ -234,6 +245,7 @@ export const scoreLabel = (s) => (s >= 0.75 ? 'Good' : s >= 0.55 ? 'Fair' : 'Poo
 export function whenToGo({ fc, tide, spot, mode = 'surf', from, hours = 72, isDaylight, max = 3 }) {
   const expert = spot.skill === 'expert_only';
   const start = Math.max(hourIndex(fc.time, from), 0);
+  const classes = tideClasses(tide, fc.time);
   const scored = [];
   for (let i = start; i < fc.time.length && fc.time[i] < from + hours * HOUR; i++) {
     const t = fc.time[i];
@@ -241,7 +253,7 @@ export function whenToGo({ fc, tide, spot, mode = 'surf', from, hours = 72, isDa
       scored.push(null);
       continue;
     }
-    const cls = tide ? tideClass(tide, t) : null;
+    const cls = classes[i];
     scored.push({
       i, t, cls,
       h: fc.marine.wave_height[i],
