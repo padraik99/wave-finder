@@ -14,14 +14,21 @@ import time
 import xml.etree.ElementTree as ET
 from datetime import UTC, date, datetime
 
-from . import buoys, openmeteo, spots, tides
+from . import buoys, ntfy, openmeteo, spots, tides
 from .config import BUOY_LIVE_HOURS
 from .geo import haversine_km
 from .http import get_text, make_session
 
+# A feed outage, not dead buoys: at least this many buoys went quiet together,
+# their last readings no more than FEED_OUTAGE_SPREAD_S apart.
+FEED_OUTAGE_MIN_BUOYS = 4
+FEED_OUTAGE_SPREAD_S = 3600
+
 # Registry coordinates may be off by this much before we flag them.
 BUOY_COORD_TOLERANCE_KM = 10
 TIDE_COORD_TOLERANCE_KM = 3
+
+FEED_OUTAGE_PREFIX = "Buoy feed delayed:"
 
 
 def parse_active_stations(xml_text: str) -> dict:
@@ -37,12 +44,27 @@ def parse_active_stations(xml_text: str) -> dict:
     return out
 
 
+def feed_outage(stale: dict[str, int | None]) -> set[str]:
+    """Buoys that went quiet together: the largest group of stale buoys whose
+    last wave readings all fall within FEED_OUTAGE_SPREAD_S of each other, if it
+    has FEED_OUTAGE_MIN_BUOYS or more. Ten buoys stopping at the same minute is
+    the operator's feed, not ten broken buoys (NDBC, 2026-11-02)."""
+    times = sorted((t, b) for b, t in stale.items() if t)
+    best: list[str] = []
+    for i, (t0, _) in enumerate(times):
+        group = [b for t, b in times[i:] if t - t0 <= FEED_OUTAGE_SPREAD_S]
+        if len(group) > len(best):
+            best = group
+    return set(best) if len(best) >= FEED_OUTAGE_MIN_BUOYS else set()
+
+
 def _fmt_age(ts, now):
     return "never" if not ts else f"{(now - ts) / 3600:.1f} h ago"
 
 
 def check(session, doc: dict, now: int) -> tuple[list[str], list[str], list[str]]:
     ok, warn, fail = [], [], []
+    stale: dict[str, int | None] = {}
 
     # Buoys ---------------------------------------------------------------------
     try:
@@ -69,16 +91,27 @@ def check(session, doc: dict, now: int) -> tuple[list[str], list[str], list[str]
             warn.append(f"{label}: fetch failed: {exc}")
             continue
         live[bid] = buoys.is_live(summary, now, BUOY_LIVE_HOURS)
+        if not live[bid]:
+            stale[bid] = summary["latest_wave_time"]
         latest = summary["latest"] or {}
         spec = "with swell split" if summary["latest_spectral"] else "no spectral file"
         line = (f"{label}: waves {_fmt_age(summary['latest_wave_time'], now)}, "
                 f"{latest.get('wave_height_ft')} ft @ {latest.get('dominant_period_s')} s, {spec}")
         (ok if live[bid] else warn).append(line)
 
+    outage = feed_outage(stale)
+    if outage:
+        t = max(stale[b] for b in outage)
+        warn.insert(0, f"{FEED_OUTAGE_PREFIX} {len(outage)} buoys all stopped reporting "
+                       f"{_fmt_age(t, now)} ({', '.join(sorted(outage))}); the operator's "
+                       "feed is probably delayed. Spots waiting only on these are warnings.")
     for s in doc["spots"]:
         n, f = s["buoy"]["nearest"], s["buoy"]["fallback"]
         if not live.get(n) and not live.get(f):
-            fail.append(f"spot {s['id']}: neither buoy {n} nor {f} is live")
+            if {n, f} <= outage:
+                warn.append(f"spot {s['id']}: buoys {n} and {f} both waiting on the delayed feed")
+            else:
+                fail.append(f"spot {s['id']}: neither buoy {n} nor {f} is live")
         elif not live.get(n):
             warn.append(f"spot {s['id']}: nearest buoy {n} down, using fallback {f}")
 
@@ -127,10 +160,17 @@ def check(session, doc: dict, now: int) -> tuple[list[str], list[str], list[str]
 
 
 def main(argv=None) -> int:
-    argparse.ArgumentParser(description="Live-check every data source").parse_args(argv)
+    ap = argparse.ArgumentParser(description="Live-check every data source")
+    ap.add_argument("--alert-feed-outage", action="store_true",
+                    help="send one ntfy notification if a buoy feed looks delayed")
+    args = ap.parse_args(argv)
     doc = spots.load()
     now = int(time.time())
-    ok, warn, fail = check(make_session(), doc, now)
+    session = make_session()
+    ok, warn, fail = check(session, doc, now)
+    feed = [w for w in warn if w.startswith(FEED_OUTAGE_PREFIX)]
+    if feed and args.alert_feed_outage:
+        ntfy.send(session, "Wave Finder: NOAA buoy feed delayed", feed[0], tags="buoy")
     print(f"Verified at {datetime.fromtimestamp(now, UTC):%Y-%m-%d %H:%M} UTC "
           f"(today {date.today()})\n")
     for title, lines in (("OK", ok), ("WARN", warn), ("FAIL", fail)):

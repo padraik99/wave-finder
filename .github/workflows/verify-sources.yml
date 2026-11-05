@@ -32,7 +32,7 @@ jobs:
           cache-dependency-path: requirements.txt
       - run: pip install -r requirements.txt
       - name: Verify stations and APIs
-        run: python -m pipeline.verify
+        run: python -m pipeline.verify ${{ github.event_name == 'schedule' && '--alert-feed-outage' || '' }}
       - name: End-to-end pipeline run
         if: always()
         run: |

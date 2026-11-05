@@ -22,7 +22,7 @@ import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
-from . import buoys, openmeteo, spots, tides
+from . import buoys, openmeteo, skill, spots, tides
 from .config import ATTRIBUTION, BUOY_LIVE_HOURS, FORECAST_DAYS, SPOTS_FILE
 from .geo import in_window, wind_relation
 from .http import make_session
@@ -234,6 +234,10 @@ def run(out: Path, session, now: int | None = None, spots_file: Path = SPOTS_FIL
             else:  # marine fetch failed: keep the last forecast for this buoy
                 prev = read_json(out / "buoys" / f"{buoy_id}.json") or {}
                 summary["forecast"] = prev.get("forecast")
+            log_path = out / "skill" / f"{buoy_id}.json"
+            log = skill.update(read_json(log_path), summary["met"], summary["forecast"], now)
+            write_json(log_path, log)
+            summary["skill"] = skill.summarize(log, now)
             write_json(out / "buoys" / f"{buoy_id}.json", summary)
             summaries[buoy_id] = summary
             live = buoys.is_live(summary, now, BUOY_LIVE_HOURS)
