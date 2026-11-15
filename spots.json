@@ -23,6 +23,11 @@
       "description": "Waddell Creek to Moss Landing"
     },
     {
+      "id": "monterey",
+      "name": "Monterey",
+      "description": "Monterey Peninsula and Carmel"
+    },
+    {
       "id": "slo",
       "name": "San Luis Obispo",
       "description": "Cayucos to Pismo"
@@ -469,6 +474,26 @@
       },
       "tide_station": "9413450",
       "notes": "Sits at the head of Monterey Canyon, which focuses swell: often the biggest wave in the bay."
+    },
+    {
+      "id": "carmel_beach",
+      "name": "Carmel Beach",
+      "region": "monterey",
+      "lat": 36.5552,
+      "lon": -121.929,
+      "facing_deg": 255,
+      "swell_window": {
+        "from": 220,
+        "to": 300
+      },
+      "break_type": "beach",
+      "tide_preference": "mid",
+      "buoy": {
+        "nearest": "46236",
+        "fallback": "46042"
+      },
+      "tide_station": "9413450",
+      "notes": "Steep white-sand beach at the foot of Ocean Avenue, open to west and northwest swell between Cypress Point and Point Lobos. Heavy shorebreak on big days, and sneaker sets run far up the sand. Monastery Beach (Carmel River State Beach) to the south drops off steeply: stay well back from the water there."
     },
     {
       "id": "cayucos",
