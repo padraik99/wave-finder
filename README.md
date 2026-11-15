@@ -22,7 +22,7 @@ Phase 0 (scope) and Phase 1 (data pipeline) done. Phase 2 (installable app shell
 
 | Piece | Where |
 |---|---|
-| Spot database (32 CA spots, buoy + tide registries) | `spots.json` |
+| Spot database (33 CA spots, buoy + tide registries) | `spots.json` |
 | Fetchers, staleness check, live verifier | `pipeline/` |
 | Tests (offline, canned API responses) | `tests/` |
 | Workflows | `.github/workflows/` |

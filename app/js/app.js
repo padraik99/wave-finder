@@ -21,7 +21,7 @@ const STALE_AFTER_S = 2.5 * 3600; // fetch runs hourly; allow a late run or two
 
 // The wheel's three zones, north to south, each a list of spots.json regions.
 const ZONES = [
-  { id: 'norcal', name: 'NorCal', regions: ['north_coast', 'san_francisco', 'half_moon_bay', 'santa_cruz'] },
+  { id: 'norcal', name: 'NorCal', regions: ['north_coast', 'san_francisco', 'half_moon_bay', 'santa_cruz', 'monterey'] },
   { id: 'central', name: 'Central', regions: ['slo', 'santa_barbara'] },
   { id: 'socal', name: 'SoCal', regions: ['orange_county'] },
 ];
