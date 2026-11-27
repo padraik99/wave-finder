@@ -1,5 +1,5 @@
 # Mavericks Watch (pipeline/mavericks.py). Every 30 min: while the Mavericks
-# forecast stays under 15 ft for the next 5 days this only reads the published
+# forecast stays under 14 ft for the next 5 days this only reads the published
 # forecast and stops. Once it switches on, it reads buoys 46059, 46214 and 46012
 # straight from NDBC, pings when forerunners (18 s+) reach 46059, and stands
 # down after the swell passes.
