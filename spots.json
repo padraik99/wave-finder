@@ -290,7 +290,7 @@
       "skill": "expert_only",
       "notes": "Big-wave reef off Pillar Point. Experts only. Very low tide exposes the boneyard rocks.",
       "big_wave": {
-        "min_ft": 15,
+        "min_ft": 14,
         "note": "Big day: light wind matters more than its direction. A strong offshore holds the face up, which can hang a paddler at the top until the lip throws them or the wave breaks on them. Light onshore is tolerated here far better than at most breaks."
       }
     },

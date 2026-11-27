@@ -203,3 +203,29 @@ def daylight_for(fc: dict, lat: float, lon: float) -> Callable[[int], bool]:
         return d["firstLight"] - 1800 <= t < d["lastLight"]
 
     return is_daylight
+
+
+# Rough breaking-face height on a big-wave reef (Mavericks) from the forecast's
+# deep-water significant height. Twin of faceRange in app/js/model.js; both
+# run tests/cases/faces.json. Sets run 1.5-2x the significant height and the
+# reef stands long-period swell up further, so the multiplier grows with
+# period: 1.2-1.6x at 10 s, 1.6-2.2x at 14 s, 2.0-2.8x at 18 s and longer.
+# Checked against two 2026 swells: 22 ft @ 16 s forecast (NWS called 40-50 ft
+# faces) and 15 ft @ ~15 s (about 30 ft faces filmed).
+def face_range(hs: float | None, period: float | None) -> list[int] | None:
+    """[low, high] face height in ft, each rounded to the nearest 5 ft."""
+    if hs is None or period is None or hs <= 0:
+        return None
+    lo = min(max(1.2 + 0.1 * (period - 10), 1.2), 2.0)
+    hi = min(max(1.6 + 0.15 * (period - 10), 1.6), 2.8)
+    low = js_round(hs * lo / 5) * 5
+    high = max(js_round(hs * hi / 5) * 5, low + 5)
+    return [low, high]
+
+
+def fc_period(marine: dict, i: int) -> float | None:
+    """The longer of the mean wave period and the primary swell period: the
+    models tend to run short on long-period groundswell."""
+    ps = [p for p in (marine.get("wave_period", [None] * (i + 1))[i],
+                      marine.get("swell_wave_period", [None] * (i + 1))[i]) if p is not None]
+    return max(ps) if ps else None

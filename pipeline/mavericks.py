@@ -5,8 +5,9 @@
 Runs every 30 minutes (cron-job.org, GitHub's schedule as backup). Each run:
 
 1. Idle: reads the published Mavericks forecast. Any hour at or above the
-   spot's big_wave.min_ft (15 ft) within 5 days switches the watch on, with
-   one ntfy message saying when the peak is due.
+   spot's big_wave.min_ft (14 ft) within 5 days switches the watch on, with
+   one ntfy message saying when the peak is due and a rough face height
+   (score.face_range).
 2. On: fetches only the three buoys between the storm and Pillar Point
    (46059 far offshore, 46214 Point Reyes, 46012 Half Moon Bay; NDBC, no
    Open-Meteo call). The first time 46059 shows forerunners (18 s or longer
@@ -14,7 +15,7 @@ Runs every 30 minutes (cron-job.org, GitHub's schedule as backup). Each run:
    for 46059's own position at that hour.
 3. Stands down, with a message, once no hour in the next 5 days reaches the
    threshold and either 12 hours have passed since the last big forecast hour
-   (the swell has gone through) or the forecast has dropped below 14 ft before
+   (the swell has gone through) or the forecast has dropped 1 ft below the threshold before
    arriving (a downgrade). Then a new swell can switch it on again.
 
 State is a small JSON file kept on the `watch` branch; this is its only writer.
@@ -32,16 +33,16 @@ from . import buoys, ntfy
 from .config import SPOTS_FILE
 from .http import make_session
 from .run import read_json, write_json
-from .score import TZ
+from .score import TZ, face_range, fc_period
 
 SPOT_ID = "mavericks"
-DEFAULT_MIN_FT = 15
+DEFAULT_MIN_FT = 14
 LOOKAHEAD_H = 120
 FORERUNNER_S = 18
 OFFSHORE = "46059"
 WATCH_BUOYS = ("46059", "46214", "46012")
 PASSED_AFTER_H = 12
-DOWNGRADE_FT = 14
+DOWNGRADE_MARGIN_FT = 1  # stand down early if the forecast falls this far below min_ft
 READING_MAX_AGE_H = 3
 FORECAST_MATCH_S = 90 * 60
 HOUR = 3600
@@ -60,6 +61,21 @@ def ahead(fc: dict | None, now: int, hours: int = LOOKAHEAD_H) -> list[tuple[int
     hour = now - now % HOUR
     return [(t, h) for t, h in zip(fc["time"], fc["marine"]["wave_height"], strict=True)
             if hour <= t <= now + hours * HOUR and h is not None]
+
+
+def period_at(fc: dict | None, t: int) -> float | None:
+    """Forecast period at Mavericks for hour t (the longer of mean and swell)."""
+    if not fc or t not in fc.get("time", []):
+        return None
+    return fc_period(fc["marine"], fc["time"].index(t))
+
+
+def faces_text(ft: float, period: float | None) -> str:
+    """'roughly 25-35 ft faces on the biggest sets', or '' without a period."""
+    r = face_range(ft, period)
+    if not r:
+        return ""
+    return f"roughly {r[0]}–{r[1]} ft faces on the biggest sets ({ft:.0f} ft @ {period:.0f} s)"
 
 
 def forecast_at(buoy_fc: dict | None, t: int) -> dict | None:
@@ -119,6 +135,13 @@ def compare_line(period: float, buoy_fc: dict | None, t: int) -> str:
             f"Measured {period:.0f} s, {verdict}.")
 
 
+def peak_line(state: dict) -> str:
+    line = (f"Peak forecast at Mavericks: {state['peak_ft']:.0f} ft around "
+            f"{local_str(state['peak_t'])}")
+    faces = faces_text(state["peak_ft"], state.get("peak_period_s"))
+    return f"{line}, {faces}." if faces else line + "."
+
+
 def step(state: dict | None, fc: dict | None, buoy_fc: dict | None, now: int,
          fetch: Callable[[str], dict | None], names: dict[str, str],
          min_ft: float = DEFAULT_MIN_FT) -> tuple[dict, list[dict]]:
@@ -135,10 +158,13 @@ def step(state: dict | None, fc: dict | None, buoy_fc: dict | None, now: int,
             return state, []
         bt, bh = max(big, key=lambda x: x[1])
         state = {"status": "armed", "armed_at": now, "peak_ft": bh, "peak_t": bt,
+                 "peak_period_s": period_at(fc, bt),
                  "last_big_t": big[-1][0], "forerunners_at": None}
+        faces = faces_text(bh, state["peak_period_s"])
         msgs.append({
             "title": "Mavericks Watch on",
-            "message": (f"Forecast at Mavericks reaches {bh:.0f} ft around {local_str(bt)}. "
+            "message": (f"Forecast at Mavericks reaches {bh:.0f} ft around {local_str(bt)}"
+                        f"{': ' + faces if faces else ''}. "
                         f"Watching buoys {', '.join(WATCH_BUOYS)} every 30 min for "
                         f"forerunners ({FORERUNNER_S} s+ at {OFFSHORE})."),
             "priority": "high", "tags": "ocean,eyes",
@@ -148,10 +174,12 @@ def step(state: dict | None, fc: dict | None, buoy_fc: dict | None, now: int,
             state["last_big_t"] = big[-1][0]
             bt, bh = max(big, key=lambda x: x[1])
             state["peak_ft"], state["peak_t"] = bh, bt
+            state["peak_period_s"] = period_at(fc, bt)
         else:
             top = peak[1] if peak else 0
             passed = now >= state.get("last_big_t", 0) + PASSED_AFTER_H * HOUR
-            downgraded = state.get("last_big_t", 0) > now and top < DOWNGRADE_FT
+            downgraded = (state.get("last_big_t", 0) > now
+                          and top < min_ft - DOWNGRADE_MARGIN_FT)
             if passed or downgraded:
                 why = ("the swell has passed" if passed else
                        f"the forecast dropped to {top:.0f} ft before it arrived")
@@ -181,8 +209,7 @@ def step(state: dict | None, fc: dict | None, buoy_fc: dict | None, now: int,
                 f"{local_str(obs['time'])}: the long-period front of the swell is on its way.",
                 compare_line(period, buoy_fc, obs["time"]),
                 *(buoy_line(b, names.get(b, ""), readings[b], now) for b in WATCH_BUOYS[1:]),
-                f"Peak forecast at Mavericks: {state['peak_ft']:.0f} ft around "
-                f"{local_str(state['peak_t'])}.",
+                peak_line(state),
             ]
             msgs.append({"title": "Mavericks forerunners at 46059", "message": "\n".join(lines),
                          "priority": "high", "tags": "ocean,rotating_light"})

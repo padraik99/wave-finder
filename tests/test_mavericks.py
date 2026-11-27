@@ -105,8 +105,38 @@ def test_stands_down_after_the_swell_passes():
 def test_downgrade_before_arrival_stands_down_but_a_near_miss_does_not():
     state, msgs = mv.step(armed(), fc_with({40: 12}), BUOY_FC, NOW, Fetch(), NAMES)
     assert state["status"] == "idle" and "dropped to 12 ft" in msgs[0]["message"]
-    state, msgs = mv.step(armed(), fc_with({40: 14.5}), BUOY_FC, NOW, Fetch(), NAMES)
+    state, msgs = mv.step(armed(), fc_with({40: 13.5}), BUOY_FC, NOW, Fetch(), NAMES)
     assert state["status"] == "armed" and msgs == []
+
+
+def test_threshold_is_14_ft_and_comes_from_spots_json():
+    from pipeline import spots
+    mav = next(s for s in spots.load()["spots"] if s["id"] == "mavericks")
+    assert mav["big_wave"]["min_ft"] == 14 == mv.DEFAULT_MIN_FT
+    state, _ = mv.step(None, fc_with({60: 14.2}), BUOY_FC, NOW, Fetch(), NAMES)
+    assert state["status"] == "armed"
+
+
+def with_periods(fc, wave_period=16.0, swell_period=13.5):
+    n = len(fc["time"])
+    fc["marine"] |= {"wave_period": [wave_period] * n, "swell_wave_period": [swell_period] * n}
+    return fc
+
+
+def test_messages_carry_a_face_height_range():
+    fc = with_periods(fc_with({70: 22}))
+    state, msgs = mv.step(None, fc, BUOY_FC, NOW, Fetch(), NAMES)
+    assert state["peak_period_s"] == 16.0
+    assert "roughly 40–55 ft faces on the biggest sets (22 ft @ 16 s)" in msgs[0]["message"]
+    state, msgs = mv.step(state, fc, BUOY_FC, NOW + 1800, Fetch(buoy(period=19)), NAMES)
+    assert "Peak forecast at Mavericks: 22 ft" in msgs[0]["message"]
+    assert "roughly 40–55 ft faces" in msgs[0]["message"]
+
+
+def test_no_period_in_forecast_means_no_face_line():
+    _, msgs = mv.step(None, fc_with({70: 18}), BUOY_FC, NOW, Fetch(), NAMES)
+    text = msgs[0]["message"]
+    assert "faces" not in text and "Forecast at Mavericks reaches 18 ft around" in text
 
 
 def test_a_new_swell_rearms_after_standing_down():

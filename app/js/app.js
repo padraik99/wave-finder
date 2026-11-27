@@ -10,7 +10,7 @@ import {
 import {
   RELATION, buoyVsForecast, compass, daylightFor, distanceMi, fmtAge, fmtDate, fmtHour, fmtTime, fmtWeekday,
   ft, hourIndex, localDayKey, nearbyPicks, nowScore, scoreLabel, tideClasses, tideSuits, swellTrains, tideAt,
-  weatherLabel, wetsuitFor, whenToGo, whole,
+  weatherLabel, wetsuitFor, whenToGo, whole, faceRange, fcPeriod,
 } from './model.js';
 import { sunTimes } from './sun.js';
 import { dirArrow, relClass, scrubberStrip, sparkline, tideCurve, windDiagram } from './svg.js';
@@ -216,6 +216,16 @@ function starCards(zone, stars, mode) {
 // variable for the session, and never stored or sent anywhere: the ranking
 // runs here on the phone against data already downloaded.
 let here = null;
+
+// Wind card note on big days, with a rough face height from the forecast
+// (faceRange: same rule as the Mavericks Watch messages).
+function bigWaveNote(spot, m, i) {
+  const p = fcPeriod(m, i);
+  const r = faceRange(m.wave_height[i], p);
+  const faces = r ? `<p class="faces">Biggest sets: roughly <b>${r[0]}–${r[1]} ft faces</b>
+    <small>(rule of thumb from ${ft(m.wave_height[i])} ft @ ${whole(p)} s; the reef stands long-period swell up)</small></p>` : '';
+  return `<div class="big-wave"><b>Big-wave note</b>${faces}<p>${esc(spot.big_wave.note)}</p></div>`;
+}
 
 function nearCard(state, entries, mode) {
   if (state.error) {
@@ -821,8 +831,7 @@ class SpotView {
           <p class="big">${whole(w.wind_speed_10m[i])} <small>mph</small></p>
           <p class="muted">gusts ${whole(w.wind_gusts_10m[i])} mph<br>from ${compass(w.wind_direction_10m[i])}</p>
         </div></div>
-      ${spot.big_wave && m.wave_height[i] >= spot.big_wave.min_ft ? `<div class="big-wave">
-        <b>Big-wave note</b><p>${esc(spot.big_wave.note)}</p></div>` : ''}`;
+      ${spot.big_wave && m.wave_height[i] >= spot.big_wave.min_ft ? bigWaveNote(spot, m, i) : ''}`;
 
     // Tide
     const tideEl = document.getElementById('c-tide');

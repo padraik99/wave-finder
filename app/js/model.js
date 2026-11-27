@@ -338,3 +338,24 @@ export function wetsuitFor(f) {
   if (f < 72) return 'springsuit or 2 mm';
   return 'trunks or a rash guard';
 }
+
+// Rough breaking-face height on a big-wave reef (Mavericks) from the forecast's
+// deep-water significant height. Twin of face_range in pipeline/score.py; both
+// run tests/cases/faces.json. Multiplier grows with period: 1.2-1.6x at 10 s,
+// 1.6-2.2x at 14 s, 2.0-2.8x at 18 s and longer. Returns [low, high] ft, each
+// rounded to the nearest 5 ft, or null.
+export function faceRange(hs, period) {
+  if (hs == null || period == null || hs <= 0) return null;
+  const lo = Math.min(Math.max(1.2 + 0.1 * (period - 10), 1.2), 2.0);
+  const hi = Math.min(Math.max(1.6 + 0.15 * (period - 10), 1.6), 2.8);
+  const low = Math.floor(hs * lo / 5 + 0.5) * 5;
+  const high = Math.max(Math.floor(hs * hi / 5 + 0.5) * 5, low + 5);
+  return [low, high];
+}
+
+// The longer of the mean wave period and the primary swell period at hour i
+// (models tend to run short on long-period groundswell).
+export function fcPeriod(marine, i) {
+  const ps = [marine.wave_period?.[i], marine.swell_wave_period?.[i]].filter((p) => p != null);
+  return ps.length ? Math.max(...ps) : null;
+}

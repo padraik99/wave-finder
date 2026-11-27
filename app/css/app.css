@@ -427,6 +427,8 @@ small { font-size: 0.75em; }
 .big-wave { margin-top: 12px; padding: 10px 12px; border: 1px solid var(--cross); border-radius: 12px; }
 .big-wave b { color: var(--cross); font-size: 0.85rem; }
 .big-wave p { margin: 4px 0 0; font-size: 0.9rem; }
+.big-wave .faces b { color: inherit; font-size: inherit; }
+.big-wave .faces small { display: block; color: var(--muted); font-size: 0.8rem; }
 
 .neighbours { display: flex; justify-content: space-between; gap: 8px; margin-top: 16px; }
 .neighbours .btn { display: block; line-height: var(--tap); text-decoration: none; font-size: 0.9rem; max-width: 49%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }

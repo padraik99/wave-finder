@@ -1,0 +1,965 @@
+{
+"_how": "Shared by tests/test_faces.py and tests/js/faces.test.mjs. Regenerate with the snippet in tests/test_faces.py only when the formula changes on purpose.",
+"cases": [
+{
+"hs": 0,
+"period": 8,
+"expected": null
+},
+{
+"hs": 0,
+"period": 10,
+"expected": null
+},
+{
+"hs": 0,
+"period": 12,
+"expected": null
+},
+{
+"hs": 0,
+"period": 13.5,
+"expected": null
+},
+{
+"hs": 0,
+"period": 14,
+"expected": null
+},
+{
+"hs": 0,
+"period": 15,
+"expected": null
+},
+{
+"hs": 0,
+"period": 16,
+"expected": null
+},
+{
+"hs": 0,
+"period": 17,
+"expected": null
+},
+{
+"hs": 0,
+"period": 18,
+"expected": null
+},
+{
+"hs": 0,
+"period": 20,
+"expected": null
+},
+{
+"hs": 0,
+"period": null,
+"expected": null
+},
+{
+"hs": 8,
+"period": 8,
+"expected": [
+10,
+15
+]
+},
+{
+"hs": 8,
+"period": 10,
+"expected": [
+10,
+15
+]
+},
+{
+"hs": 8,
+"period": 12,
+"expected": [
+10,
+15
+]
+},
+{
+"hs": 8,
+"period": 13.5,
+"expected": [
+10,
+15
+]
+},
+{
+"hs": 8,
+"period": 14,
+"expected": [
+15,
+20
+]
+},
+{
+"hs": 8,
+"period": 15,
+"expected": [
+15,
+20
+]
+},
+{
+"hs": 8,
+"period": 16,
+"expected": [
+15,
+20
+]
+},
+{
+"hs": 8,
+"period": 17,
+"expected": [
+15,
+20
+]
+},
+{
+"hs": 8,
+"period": 18,
+"expected": [
+15,
+20
+]
+},
+{
+"hs": 8,
+"period": 20,
+"expected": [
+15,
+20
+]
+},
+{
+"hs": 8,
+"period": null,
+"expected": null
+},
+{
+"hs": 12,
+"period": 8,
+"expected": [
+15,
+20
+]
+},
+{
+"hs": 12,
+"period": 10,
+"expected": [
+15,
+20
+]
+},
+{
+"hs": 12,
+"period": 12,
+"expected": [
+15,
+25
+]
+},
+{
+"hs": 12,
+"period": 13.5,
+"expected": [
+20,
+25
+]
+},
+{
+"hs": 12,
+"period": 14,
+"expected": [
+20,
+25
+]
+},
+{
+"hs": 12,
+"period": 15,
+"expected": [
+20,
+30
+]
+},
+{
+"hs": 12,
+"period": 16,
+"expected": [
+20,
+30
+]
+},
+{
+"hs": 12,
+"period": 17,
+"expected": [
+25,
+30
+]
+},
+{
+"hs": 12,
+"period": 18,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 12,
+"period": 20,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 12,
+"period": null,
+"expected": null
+},
+{
+"hs": 14,
+"period": 8,
+"expected": [
+15,
+20
+]
+},
+{
+"hs": 14,
+"period": 10,
+"expected": [
+15,
+20
+]
+},
+{
+"hs": 14,
+"period": 12,
+"expected": [
+20,
+25
+]
+},
+{
+"hs": 14,
+"period": 13.5,
+"expected": [
+20,
+30
+]
+},
+{
+"hs": 14,
+"period": 14,
+"expected": [
+20,
+30
+]
+},
+{
+"hs": 14,
+"period": 15,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 14,
+"period": 16,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 14,
+"period": 17,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 14,
+"period": 18,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 14,
+"period": 20,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 14,
+"period": null,
+"expected": null
+},
+{
+"hs": 15,
+"period": 8,
+"expected": [
+20,
+25
+]
+},
+{
+"hs": 15,
+"period": 10,
+"expected": [
+20,
+25
+]
+},
+{
+"hs": 15,
+"period": 12,
+"expected": [
+20,
+30
+]
+},
+{
+"hs": 15,
+"period": 13.5,
+"expected": [
+25,
+30
+]
+},
+{
+"hs": 15,
+"period": 14,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 15,
+"period": 15,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 15,
+"period": 16,
+"expected": [
+25,
+40
+]
+},
+{
+"hs": 15,
+"period": 17,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 15,
+"period": 18,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 15,
+"period": 20,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 15,
+"period": null,
+"expected": null
+},
+{
+"hs": 15.4,
+"period": 8,
+"expected": [
+20,
+25
+]
+},
+{
+"hs": 15.4,
+"period": 10,
+"expected": [
+20,
+25
+]
+},
+{
+"hs": 15.4,
+"period": 12,
+"expected": [
+20,
+30
+]
+},
+{
+"hs": 15.4,
+"period": 13.5,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 15.4,
+"period": 14,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 15.4,
+"period": 15,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 15.4,
+"period": 16,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 15.4,
+"period": 17,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 15.4,
+"period": 18,
+"expected": [
+30,
+45
+]
+},
+{
+"hs": 15.4,
+"period": 20,
+"expected": [
+30,
+45
+]
+},
+{
+"hs": 15.4,
+"period": null,
+"expected": null
+},
+{
+"hs": 16.7,
+"period": 8,
+"expected": [
+20,
+25
+]
+},
+{
+"hs": 16.7,
+"period": 10,
+"expected": [
+20,
+25
+]
+},
+{
+"hs": 16.7,
+"period": 12,
+"expected": [
+25,
+30
+]
+},
+{
+"hs": 16.7,
+"period": 13.5,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 16.7,
+"period": 14,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 16.7,
+"period": 15,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 16.7,
+"period": 16,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 16.7,
+"period": 17,
+"expected": [
+30,
+45
+]
+},
+{
+"hs": 16.7,
+"period": 18,
+"expected": [
+35,
+45
+]
+},
+{
+"hs": 16.7,
+"period": 20,
+"expected": [
+35,
+45
+]
+},
+{
+"hs": 16.7,
+"period": null,
+"expected": null
+},
+{
+"hs": 18,
+"period": 8,
+"expected": [
+20,
+30
+]
+},
+{
+"hs": 18,
+"period": 10,
+"expected": [
+20,
+30
+]
+},
+{
+"hs": 18,
+"period": 12,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 18,
+"period": 13.5,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 18,
+"period": 14,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 18,
+"period": 15,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 18,
+"period": 16,
+"expected": [
+30,
+45
+]
+},
+{
+"hs": 18,
+"period": 17,
+"expected": [
+35,
+50
+]
+},
+{
+"hs": 18,
+"period": 18,
+"expected": [
+35,
+50
+]
+},
+{
+"hs": 18,
+"period": 20,
+"expected": [
+35,
+50
+]
+},
+{
+"hs": 18,
+"period": null,
+"expected": null
+},
+{
+"hs": 22,
+"period": 8,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 22,
+"period": 10,
+"expected": [
+25,
+35
+]
+},
+{
+"hs": 22,
+"period": 12,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 22,
+"period": 13.5,
+"expected": [
+35,
+45
+]
+},
+{
+"hs": 22,
+"period": 14,
+"expected": [
+35,
+50
+]
+},
+{
+"hs": 22,
+"period": 15,
+"expected": [
+35,
+50
+]
+},
+{
+"hs": 22,
+"period": 16,
+"expected": [
+40,
+55
+]
+},
+{
+"hs": 22,
+"period": 17,
+"expected": [
+40,
+60
+]
+},
+{
+"hs": 22,
+"period": 18,
+"expected": [
+45,
+60
+]
+},
+{
+"hs": 22,
+"period": 20,
+"expected": [
+45,
+60
+]
+},
+{
+"hs": 22,
+"period": null,
+"expected": null
+},
+{
+"hs": 25,
+"period": 8,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 25,
+"period": 10,
+"expected": [
+30,
+40
+]
+},
+{
+"hs": 25,
+"period": 12,
+"expected": [
+35,
+50
+]
+},
+{
+"hs": 25,
+"period": 13.5,
+"expected": [
+40,
+55
+]
+},
+{
+"hs": 25,
+"period": 14,
+"expected": [
+40,
+55
+]
+},
+{
+"hs": 25,
+"period": 15,
+"expected": [
+45,
+60
+]
+},
+{
+"hs": 25,
+"period": 16,
+"expected": [
+45,
+65
+]
+},
+{
+"hs": 25,
+"period": 17,
+"expected": [
+50,
+65
+]
+},
+{
+"hs": 25,
+"period": 18,
+"expected": [
+50,
+70
+]
+},
+{
+"hs": 25,
+"period": 20,
+"expected": [
+50,
+70
+]
+},
+{
+"hs": 25,
+"period": null,
+"expected": null
+},
+{
+"hs": 30,
+"period": 8,
+"expected": [
+35,
+50
+]
+},
+{
+"hs": 30,
+"period": 10,
+"expected": [
+35,
+50
+]
+},
+{
+"hs": 30,
+"period": 12,
+"expected": [
+40,
+55
+]
+},
+{
+"hs": 30,
+"period": 13.5,
+"expected": [
+45,
+65
+]
+},
+{
+"hs": 30,
+"period": 14,
+"expected": [
+50,
+65
+]
+},
+{
+"hs": 30,
+"period": 15,
+"expected": [
+50,
+70
+]
+},
+{
+"hs": 30,
+"period": 16,
+"expected": [
+55,
+75
+]
+},
+{
+"hs": 30,
+"period": 17,
+"expected": [
+55,
+80
+]
+},
+{
+"hs": 30,
+"period": 18,
+"expected": [
+60,
+85
+]
+},
+{
+"hs": 30,
+"period": 20,
+"expected": [
+60,
+85
+]
+},
+{
+"hs": 30,
+"period": null,
+"expected": null
+},
+{
+"hs": null,
+"period": 8,
+"expected": null
+},
+{
+"hs": null,
+"period": 10,
+"expected": null
+},
+{
+"hs": null,
+"period": 12,
+"expected": null
+},
+{
+"hs": null,
+"period": 13.5,
+"expected": null
+},
+{
+"hs": null,
+"period": 14,
+"expected": null
+},
+{
+"hs": null,
+"period": 15,
+"expected": null
+},
+{
+"hs": null,
+"period": 16,
+"expected": null
+},
+{
+"hs": null,
+"period": 17,
+"expected": null
+},
+{
+"hs": null,
+"period": 18,
+"expected": null
+},
+{
+"hs": null,
+"period": 20,
+"expected": null
+},
+{
+"hs": null,
+"period": null,
+"expected": null
+}
+]
+}
